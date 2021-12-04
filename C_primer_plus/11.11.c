@@ -1,7 +1,6 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 void input(char *p[]);
 void ASCII_input(char *p[]);
 void len_input(char *p[]);
