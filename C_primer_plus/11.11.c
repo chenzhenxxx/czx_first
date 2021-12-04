@@ -10,6 +10,7 @@ int first(char *a, char *b);
 main()
 {
     int i = 0;
+    int p;
     char a[10][20];
     char *p[10];
     for (i = 0; i < 10; i++)
