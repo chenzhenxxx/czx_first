@@ -57,4 +57,5 @@ float yang,tian,hu,sumyang=0,sumhu=0,sumtian=0,sum=0,money,other;
   printf("the other cost :%f",other);
   }
          printf("the final cost you need pay :%f",money+other);
+         printf("commit:\n");
 }
