@@ -1,4 +1,4 @@
-#include <stdio.h>
+#iinclude <stdio.h>
 #include<math.h>
 int main()
 {
@@ -6,5 +6,6 @@ int main()
    int a;
    a=pow(2,5);
    printf("%d\n",a);
+   printf("d")
    return 0;
 }
