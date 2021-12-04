@@ -5,6 +5,7 @@ float yang,tian,hu,sumyang=0,sumhu=0,sumtian=0,sum=0,money,other;
   printf("a)yang     b)tian\n");
   printf("c)hu       q)qiut\n" );
   printf("please input zhonglei\n");
+  printf("66");
   while(scanf("%c",&ch)==1&&ch!='q')
   {
      switch(ch)
