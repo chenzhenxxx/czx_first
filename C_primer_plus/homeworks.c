@@ -5,4 +5,5 @@ main()
     printf("zhenxin\nchen\n");
     printf("chen");
     printf(" zhenxin");
+    printf("66");
 }
