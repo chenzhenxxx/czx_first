@@ -11,5 +11,7 @@ int main(int argc, char const *argv[])
         sum*=a;
     }
     printf("%lf\n",sum);
+    printf("66");
     return 0;
+
 }
