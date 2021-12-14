@@ -10,6 +10,7 @@ struct fact
     struct name wholename;
 };
 void print(struct fact *p);
+void rprint(struct fact a[5]);
 main()
 {
     struct fact fare[5];
@@ -27,9 +28,24 @@ main()
         
     }
     print(p);
+    rprint(fare);
 
 }
 void print(struct fact *p)
+{
+    int i;
+    for(i=0;i<5;i++)
+    {
+        printf("%s %s ",p->wholename.xin,p->wholename.dbm);
+        if(p->wholename.zjm[0]!='1')
+        {   printf("%c.",p->wholename.zjm[0]);
+            
+        }
+         printf(" -- %s\n",p->number);
+         p++;
+    }
+}
+void rprint(struct fact a[5])
 {
     int i;
     for(i=0;i<5;i++)
