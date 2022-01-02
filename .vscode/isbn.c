@@ -46,8 +46,8 @@ main()
      }
     
       quicksort(c,0,count-1);
-     printf("the count:%d\n",count);
+     printf("%d\n",count);
      for(i=0;i<count;i++)
-     printf("%d",c[i]);
+     printf("%d ",c[i]);
 
 }
