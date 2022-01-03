@@ -44,8 +44,9 @@ strbuf_reset(struct strbuf *sb)
     sb->buf=NULL;
 }
 char *strbuf_detach(struct strbuf *sb, size_t *sz)
-{
-    
+{   
+    *sz=sizeof(sb->buf);
+    return sb->buf;
 }
 int main() {
   struct strbuf sb;
