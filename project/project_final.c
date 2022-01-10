@@ -7,9 +7,11 @@ struct strbuf {
   char *buf;   //缓冲区（字符串）
 };
 struct strbuf sbuf[101];
-strbuf_init(struct strbuf *sb,int cslen)
+
+//AAAA
+strbuf_init(struct strbuf *sb,int alloc)
 {   sb->len=0;
-    sb->alloc=cslen;
+    sb->alloc=alloc;
     sb->buf=(char*)malloc(sizeof(char)*(sb->alloc)); 
 }
 void strbuf_attach(struct strbuf *sb, void *str, size_t len, size_t mem)
@@ -26,11 +28,19 @@ void strbuf_release(struct strbuf *sb)
 }
 void strbuf_swap(struct strbuf *a, struct strbuf *b)
 {
-    struct strbuf* t;
-    t=a;
-    a=b;
-    b=t;
+    struct strbuf t;
+    t=*a;
+    *a=*b;
+    *b=t;
 }
+
+char *strbuf_detach(struct strbuf *sb, size_t *sz)
+{   
+    *sz=sb->len;
+    return sb->buf;
+}
+
+
 int strbuf_cmp(const struct strbuf *first, const struct strbuf *second)
 {   
     if(first->alloc>second->alloc)
@@ -44,16 +54,15 @@ strbuf_reset(struct strbuf *sb)
 {
     sb->buf=NULL;
     sb->len=0;
-    sb->alloc=0;
 }
-char *strbuf_detach(struct strbuf *sb, size_t *sz)
-{   
-    *sz=sb->len;
-    return sb->buf;
-}
+
+
+
+////  BBBBBB
+
 void strbuf_grow(struct strbuf *sb, size_t extra)
 {
-    if(sb->len+extra>sb->alloc)
+    while(sb->len+extra>sb->alloc)
     {
         sb->alloc*=2;
     }
@@ -64,7 +73,7 @@ void strbuf_grow(struct strbuf *sb, size_t extra)
 void strbuf_add(struct strbuf *sb, const void *data, size_t len)
 {
     sb->len+=len;
-    if(sb->len>sb->alloc)
+    while(sb->len>sb->alloc)
     {
         sb->alloc*=2;
     }
@@ -75,12 +84,12 @@ void strbuf_add(struct strbuf *sb, const void *data, size_t len)
 void strbuf_addch(struct strbuf *sb, int c)
 {
     sb->len+=1;
-    if(sb->len>sb->alloc)
+    while(sb->len>sb->alloc)
     {  sb->alloc*=2;
      
     }
     sb->buf=(char*)realloc(sb->buf,sizeof(char*)*(sb->alloc));
-    sb->buf[sb->len-1]=(char)c;
+    strcat(sb->buf,c);
 }
 
 void strbuf_addstr(struct strbuf *sb, const char *s)
@@ -91,21 +100,22 @@ void strbuf_addstr(struct strbuf *sb, const char *s)
 void strbuf_addbuf(struct strbuf *sb, const struct strbuf *sb2)
 {
     sb->len+=sb2->len;
-    if(sb->len>sb->alloc)
+    while(sb->len>sb->alloc)
      {  sb->alloc*=2;
      
     }
     sb->buf=(char*)realloc(sb->buf,sizeof(char*)*(sb->alloc));
     strcat(sb->buf,((sb2)->buf));
 }
-static inline size_t strbuf_avail(const struct strbuf *sb)
-{
-    return sb->alloc ? sb->alloc - sb->len - 1 : 0;
-}
 static inline void strbuf_setlen(struct strbuf *sb, size_t len)
 {
     sb->len=len;
 }
+static inline size_t strbuf_avail(const struct strbuf *sb)
+{
+    return sb->alloc ? sb->alloc - sb->len -1: 0;
+}
+
 void strbuf_insert(struct strbuf *sb, size_t pos, const void *data, size_t len)
 {    
      if(pos>=(sb->len-1))
@@ -133,6 +143,12 @@ void strbuf_insert(struct strbuf *sb, size_t pos, const void *data, size_t len)
      free(p);
     }
 }
+
+
+
+///CCCCCC
+
+
 void strbuf_rtrim(struct strbuf *sb)
 {   int delete_len=0;
     char *p=sb->buf;
@@ -163,12 +179,17 @@ void strbuf_ltrim(struct strbuf *sb)
 void strbuf_remove(struct strbuf *sb, size_t pos, size_t len)
 {
     char*p=&sb->buf[pos+len];
-    for(int i=pos;i<pos+len;i++)
-     sb->buf[i]='\0';
+    
+     sb->buf[pos]='\0';
      strcpy(&sb->buf[pos],p);
      sb->len-=len;
 
 }
+
+
+
+////////DDDDDDDDDD
+
 
 ssize_t strbuf_read(struct strbuf *sb, int fd, size_t hint)
 
@@ -222,7 +243,7 @@ int strbuf_getline(struct strbuf *sb, FILE *fp)
    char txt[300];
    fgets(txt,255,fp);
    sb->len+=strlen(txt);
-   if(sb->len>sb->alloc)
+   while(sb->len>sb->alloc)
    { sb->alloc*=2;
      realloc(sb->buf,sizeof(char)*(sb->alloc));
 
@@ -290,29 +311,52 @@ int main() {
   strbuf_init(&sb, 10);
   strbuf_attach(&sb, "  xiyou", 7, 10);
   puts(sb.buf);
+  
   strbuf_insert(&sb,7,"hello ",6);
   puts(sb.buf);
+
   strbuf_rtrim(&sb);
   puts(sb.buf);
+
   printf("%d",strlen(sb.buf));
   strbuf_ltrim(&sb);
   puts(sb.buf);
+
   printf("%d",strlen(sb.buf));
   printf("\n");
   strbuf_remove(&sb,3,6);
    puts(sb.buf);
    printf("%d",sb.len);
+
+
   strbuf_read_file(&sb,"/home/chenzhenxin/Desktop/czx_first/student.txt",0);
    puts(sb.buf);
    printf("%d",sb.len);
+
+
    FILE*fpf;
    fpf=fopen("/home/chenzhenxin/Desktop/czx_first/student.txt","r");
    strbuf_getline(&sb,fpf);
    puts(sb.buf);
+
+
    char*p;
    p=getbuf(0,6,&sb,p);
    puts(p);
    free(p);
+
+
    judge(&sb,"xiyo");
-   strbuf_release(&sb);
+
+
+
+   struct strbuf sq;
+  strbuf_init(&sq, 10);
+  strbuf_attach(&sq, "666", 3, 10);
+  
+  
+  strbuf_swap(&sb,&sq);
+  puts(sb.buf);
+ strbuf_release(&sb);
+   strbuf_release(&sq);
 }
