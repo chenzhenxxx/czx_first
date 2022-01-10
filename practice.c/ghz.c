@@ -1,45 +1,38 @@
 #include <stdio.h>
 int a[401][401];
 int book[401][401];
-int total,bx,by;
-void dfs(int x,int y)
-{  int next[2][2]={{0,1},{1,0}};
-int tx,ty;
-    if(x==bx&&y==by)
-    {
-        total++;
-        return;
-    }
-    for(int i=0;i<2;i++)
-    {  tx=x+next[i][0];
-       ty=y+next[i][1];
-       
-    if(tx<1||tx>bx||ty>by||ty<1)
-    continue;
-    book[tx][ty]=1;
-    dfs(tx,ty);
-    book[tx][ty]=0;
-    return;
-    }
-    return;
-
-}
+int total,bx,by,mx,my;
 main()
 {
-    int bx,by,mx,my;
+    
     scanf("%d %d %d %d",&bx,&by,&mx,&my);
-    a[bx-2][by-1]=1;
-    a[bx-1][by-2]=1;
-    a[bx+1][by-2]=1;
-    a[bx+2][by-1]=1;
-    a[bx-2][by+1]=1;
-    a[bx-1][by+2]=1;
-    a[bx+1][by+2]=1;
-    a[bx+2][by+1]=1;
+    a[mx-2][my-1]=1;
+    a[mx-1][my-2]=1;
+    a[mx+1][my-2]=1;
+    a[mx+2][my-1]=1;
+    a[mx-2][my+1]=1;
+    a[mx-1][my+2]=1;
+    a[mx+1][my+2]=1;
+    a[mx+2][my+1]=1;
+    a[mx][my]=1;
+    for(int i=0;i<=bx;i++)
+    book[i][0]=1;
+    for(int j=0;j<=by;j++)
+    book[0][j]=1;
+    
+    for(int i=1;i<=bx;i++)
+    for(int j=1;j<=by;j++)
+    {
 
-    dfs(0,0);
-    printf("%d",total);
+     if(i==1&&j==1)
+     continue;
+    if(a[i][j]==0)
+    book[i][j]=book[i-1][j]+book[i][j-1];
+    }
+    printf("%d",book[bx][by]);
 }
 
+
+    
 
     

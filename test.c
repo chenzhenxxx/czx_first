@@ -1,8 +1,9 @@
 #include <stdio.h>
-int main(int argc, char const *argv[])
-{  
-    int a=3;
-    int *p=&a;
-    a=3;
-    printf("Hello world!");
+#include <string.h>
+
+int main() {
+  char str[6] = "xiyou";
+  char str1[10]="linux";
+  strcat(str,str1);
+  printf("%s\n", str);
 }
