@@ -14,6 +14,7 @@ strbuf_init(struct strbuf *sb,int alloc)
     sb->alloc=alloc;
     sb->buf=(char*)malloc(sizeof(char)*(sb->alloc)); 
 }
+
 void strbuf_attach(struct strbuf *sb, void *str, size_t len, size_t mem)
 {
     sb->len=len;
@@ -300,6 +301,11 @@ char* getbuf(int begin,int end,struct strbuf *sb,char*p)
         return p;
 
        
+    }
+    if(c=='y')
+    {
+        p=sb->buf[begin];
+       return p;
     }
 
 
