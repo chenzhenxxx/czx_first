@@ -267,7 +267,7 @@ void judge(struct strbuf*sb,const char*string)
 }
 char* getbuf(int begin,int end,struct strbuf *sb,char*p)
 {   
-    printf("please choice the mode:\n");
+    printf("please choice the mode:\n ");
     printf("p:copy mode        y:yinyong mode\n");
     char c;
     c=getchar();
