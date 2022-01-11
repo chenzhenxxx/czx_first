@@ -15,12 +15,16 @@ strbuf_init(struct strbuf *sb,int alloc)
     sb->buf=(char*)malloc(sizeof(char)*(sb->alloc)); 
 }
 
-void strbuf_attach(struct strbuf *sb, void *str, size_t len, size_t mem)
+void strbuf_attach(struct strbuf *sb, void *str, size_t len, size_t alloc)
 {
     sb->len=len;
-    sb->buf=(char *)malloc(sizeof(char)*mem);
-     memcpy(sb->buf, str, len);
-    sb->alloc=mem;
+    sb->alloc=alloc;
+    while(sb->len>sb->alloc)
+    {
+        sb->alloc*=2;
+    }
+    sb->buf=realloc(sb->buf,sizeof(char)*(sb->alloc));
+    strcat(sb->buf,(char*)str);
 }
 void strbuf_release(struct strbuf *sb)
 {
@@ -194,8 +198,10 @@ void strbuf_remove(struct strbuf *sb, size_t pos, size_t len)
 
 ssize_t strbuf_read(struct strbuf *sb, int fd, size_t hint)
 
-{  char txt[8193];
+{  char *p;
     FILE*fp;
+    int len=0;
+    p=(char*)malloc(sizeof(char)*8193);
     if((fp=fdopen(fd,"r"))==NULL)
     {   printf("can't open the file\n");
         exit(1);
@@ -204,52 +210,64 @@ ssize_t strbuf_read(struct strbuf *sb, int fd, size_t hint)
     if(hint!=0)
     realloc(sb->buf,sb->alloc*(sizeof(char)));
      char ch;
-     while(fgets(txt,255,fp)!=NULL)
-     		strcat(sb->buf,txt);
+     while(getline(&p,&len,fp)!=EOF)
+     		{
+                 strcat(sb->buf,p);
+                 sb->len+=strlen(p);
+             }
    
-    sb->len=strlen(sb->buf);
     if(fclose(fp)!=0)
     {
         printf("can't close the file.\n");
         exit(1);
     }
+    free(p);
+    return sb->len;
 }
 
 ssize_t strbuf_read_file(struct strbuf *sb, const char *path, size_t hint)
 {
     FILE*fp;
-    char txt[8193];
+    char *p;
+    int len;
+    p=(char*)malloc(sizeof(char)*8193);
     if((fp=fopen(path,"r"))==NULL)
     {   printf("can't open the file\n");
         exit(1);
     }
     sb->alloc+=hint ? hint : 8192;
     if(hint!=0)
-    realloc(sb->buf,sb->alloc*(sizeof(char)));
-    char ch;
-     while(fgets(txt,255,fp)!=NULL)
-     		strcat(sb->buf,txt);
-    sb->len=strlen(sb->buf);
+    sb->buf=realloc(sb->buf,sb->alloc*(sizeof(char)));
+     while(getline(&p,&len,fp)!=EOF)
+     		{
+                 strcat(sb->buf,p);
+                 sb->len+=strlen(p);
+             }
     if(fclose(fp)!=0)
     {
         printf("can't close the file.\n");
         exit(1);
     }
-
-
+   free(p);
+   return sb->len;
+ 
 }
 
 int strbuf_getline(struct strbuf *sb, FILE *fp)
 {
-   char txt[300];
-   fgets(txt,255,fp);
-   sb->len+=strlen(txt);
-   while(sb->len>sb->alloc)
+   char *p;
+   int len=0;
+   p=(char*)malloc(sizeof(char)*8193);
+   if(getline(&p,&len,fp)!=EOF)
+   { 
+   while(sb->len+strlen(p)>sb->alloc)
    { sb->alloc*=2;
-     realloc(sb->buf,sizeof(char)*(sb->alloc));
-
    }
-   strcat(sb->buf,txt);
+    sb->buf=realloc(sb->buf,sizeof(char)*(sb->alloc));
+   strcat(sb->buf,p);
+   }
+   free(p);
+   return sb->len;
 }
 
 struct strbuf **strbuf_split_buf(const char *str, size_t len, int terminator, int max)
@@ -321,6 +339,7 @@ int main() {
   strbuf_insert(&sb,7,"hello ",6);
   puts(sb.buf);
 
+
   strbuf_rtrim(&sb);
   puts(sb.buf);
 
@@ -354,15 +373,13 @@ int main() {
 
    judge(&sb,"xiyo");
 
-
-
-   struct strbuf sq;
+ struct strbuf sq;
   strbuf_init(&sq, 10);
   strbuf_attach(&sq, "666", 3, 10);
-  
-  
   strbuf_swap(&sb,&sq);
   puts(sb.buf);
+
+  
  strbuf_release(&sb);
    strbuf_release(&sq);
 }
