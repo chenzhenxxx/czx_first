@@ -14,5 +14,6 @@ int main() {
   assert(strcmp(sb.buf, "xiyou") == 0);
   strbuf_addstr(&sb, "linux");
   assert(strcmp(sb.buf, "xiyoulinux") == 0);
+  printf("\n");
   strbuf_release(&sb);
 }
