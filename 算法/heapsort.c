@@ -60,4 +60,5 @@ main()
     heapsort();
     for(i=1;i<=num;i++)
     printf("%d ",h[i]);
+    printf("wy");
 }
