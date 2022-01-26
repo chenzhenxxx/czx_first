@@ -1,35 +1,36 @@
 #include <stdio.h>
 #include <string.h>
 main()
-{   int t,i;
+{
+    int t,i,count=0;
+    char n[20];
+    char a[1000][12];
     scanf("%d",&t);
-    char a[12];
     for(i=0;i<t;i++)
-    {
-        int k;
-        scanf("%s %d",&a,&k);
-        int len=strlen(a);
-        for(int r=0;r<k;r++)
-        {
-
-    
-        for(int j=0;j<len;j++)
-        {
-            if(a[j]>a[j+1])
-            {
-                for(int m=j;m<len-1;m++)
+    {   int k,j,m;
+        scanf("%s %d",&n,&k);
+        int len=strlen(n);
+          for(j=0;j<k;j++)
+          {
+              for(m=0;m<len-1;m++)
                 {
-                    a[m]=a[m+1];
+                    if(n[m]>n[m+1])
+                    {
+                        for(int x=m;x<len-1;x++)
+                          {
+                              n[x]=n[x+1];
+                          }
+                          break;
+                    }
                 }
-                break;
-            }
-        }
-        len--;
+            len--;
+          }
+          for(int q=0;q<len;q++)
+           a[count][q]=n[q];
+           count++;
+
 
     }
-    for(int s=0;s<len;s++)
-    printf("%c",a[i]);
-    printf("\n");
-    }
-    
+    for(int i=0;i<count;i++)
+     puts(a[i]);
 }
