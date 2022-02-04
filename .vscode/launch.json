@@ -19,7 +19,7 @@
             "host": "127.0.0.1",
             "program": "${fileDirname}",
             "env": {
-                "GOPATH": "/home/zhaozeyu/go",
+                "GOPATH": "/home/chenzhenxin/go",
                 "GOROOT": "/usr/lib/go"
             },
             "args": [],
