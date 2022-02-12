@@ -25,21 +25,21 @@ int main()
    int ans=s[0].r;
    for(i=1;i<n;i++)
    {
-       if(s[i].l>ans)
-       {
-           flag=0;
-           break;
-       }
-       else
-       {   if(max<s[i].r)
-           max=s[i].r;
-           if(min>s[i].l)
-           min=s[i].l;
-           ans=s[i].r; 
-       }
+      if(s[i].r>ans)
+      {
+          if(s[i].l>ans)
+          {    flag=0;
+              break;
+          }
+          else
+          {
+              ans=s[i].r;
+          }
+      }
+
    }
    if(flag==1)
-   printf("%d %d",min,max);
+   printf("%d %d",s[0].l,ans);
    else
    printf("no\n");
 
