@@ -67,3 +67,4 @@ main()
      printf("%d",que[tail-1].s);
 
 }
+ 
