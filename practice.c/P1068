@@ -1,0 +1,35 @@
+#include<iostream>
+#include<algorithm>
+using namespace std;
+struct grade
+{
+	int n;
+	int g;
+} a[30000];
+bool cmp(struct grade a,struct grade b)
+{
+	if(a.g==b.g)
+	return a.n<b.n;
+	else
+	return a.g>b.g;
+}
+int main()
+{
+	int z,x;
+	cin>>z>>x;
+	x*=1.5;
+	
+	for(int i=0;i<z;i++)
+	cin>>a[i].n>>a[i].g;
+	sort(a,a+z,cmp);
+	int sum=x;
+	for(int i=x;i<z;i++)
+	{
+		if(a[i].g==a[x-1].g)
+		sum++;
+	}
+	printf("%d %d\n",a[x-1].g,sum);
+	for(int i=0;i<z;i++)
+	if(a[i].g>=a[x-1].g)
+       printf("%d %d\n",a[i].n,a[i].g);	
+} 
