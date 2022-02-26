@@ -8,8 +8,8 @@ bool cmp(int a,int b)
 int main()
 {
     int r,n,cnt=0;
-    int a[10000];
-    int dp[1000];
+    int a[20000];
+    int dp[20000];
     cin>>r;
     cin>>n;
     int i;
