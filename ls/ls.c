@@ -103,7 +103,8 @@ void ls_a(struct stat buf,char *name,int color)
 
 void ls_i(struct stat buf,int color)
 {      int h=0,h_max=2;
-       
+
+       h++;
        printf("%7d ",buf.st_ino);
        printf("")
 }
