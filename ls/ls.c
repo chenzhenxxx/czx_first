@@ -7,6 +7,8 @@
 #include<pwd.h>  //找uid
 #include<grp.h>  //找gid
 #include<time.h>  //转换时间
+#include<unistd.h>
+#include<dirent.h>
 #define PARAM_NONE 0   //通过二进制 | 来标记flag
 #define PARAM_a 1
 #define PARAM_l 2
@@ -15,7 +17,8 @@
 #define PARAM_r 16
 #define PARAM_i 32
 #define PARAM_s 64
-int h=0,h_max=2;   //一行最多输出个数
+int h=0,h_max=2;
+int g_maxlen;   //一行最多输出个数
 void my_error(const char * err_string,int line)
 {
     fprintf(stderr,"line:%d ",line);
@@ -101,26 +104,175 @@ void ls_a(struct stat buf,char *name,int color)
 
 }
 
-void ls_i(struct stat buf,int color)
-{      int h=0,h_max=2;
-
+void ls_i(int color,char *name)
+{   struct stat buf;
+    if(stat(name,&buf)==-1)
+    {
+        my_error("stat",__LINE__);
+    }
+    int h_max=2,j=0,len=strlen(name);
+       char colorname[NAME_MAX+1];
        h++;
        printf("%7d ",buf.st_ino);
-       printf("")
+       sprintf(colorname,"\033[%dm%s\033]m",color,name);
+       printf("%-s",colorname);
+
+       for(int i=0;i<len;i++)
+       {
+           if(name[i]<0)
+                j++;   
+       }
+       len=g_maxlen-len+j/3;
+        for(int i=0;i<len+5;i++)
+		printf(" ");
+	if( h == h_max)
+	{
+		printf("\n");
+		h = 0;
+	}
 }
-#include <stdio.h>
-#include <time.h>
- 
-int main ()
+
+
+void ls_s(int color,char * name)
+{   char colorname[NAME_MAX+1];
+    struct stat buf;
+    int len=strlen(name);
+    if(stat(name,&buf)==-1)
+     {
+         my_error("stat",__LINE__);
+     }
+     sprintf(colorname,"/033[%dm%s\033[0m",color,name);
+     printf("%4d",buf.st_blocks);
+     printf("  %s",colorname);
+     h++;
+       len=g_maxlen-len;
+     for(int i=0;i<len+4;i++)
+      {
+          printf(" ");
+      }
+     if(h==h_max)
+     {
+         printf("\n");
+         h=0;
+     }
+}
+
+void time_quicksort(long filetime[],char **filename,int begin,int end)
+{  char tmpname[PATH_MAX+1];
+   if(begin>end)
+   return ;
+    int i=begin;
+    int j=end;
+    long t;
+    long tmp=filetime[begin];
+    while(i!=j)
+    {
+      while(filetime[j]<=tmp&&j>i)
+      j--;
+      while(filetime[i]>=tmp&&j>i)
+      i++;
+      if(j>i)
+      { //换时间
+        t=filetime[i];
+        filetime[i]=filetime[j];
+        filetime[j]=t;
+        //换文件名
+        strcpy(tmpname,filename[i]);
+        strcpy(filename[i],filename[j]);
+        strcpy(filename[j],tmpname);
+
+      }
+
+
+    }
+    filetime[begin]=filetime[i];
+    filetime[i]=tmp;
+     strcpy(tmpname,filename[i]);
+     strcpy(filename[i],filename[begin]);
+     strcpy(filename[begin],tmpname);
+
+    time_quicksort(filetime,filename,0,i-1);
+     time_quicksort(filetime,filename,i+1,end);
+}
+
+//ls -t //不用单独实现   
+
+void display_dir(int flag,char*path)
 {
-   time_t curtime;
- 
-   time(&curtime);
- 
-   printf("当前时间 = %s", ctime(&curtime));
- 
-   return(0);
+    DIR *dir;
+    struct dirent * ptr;
+    int cnt=0;  //计算文件个数
+    char filename[256][PATH_MAX+1];
+    long filetime[256];
+    dir=opendir(path);
+    if(dir==NULL)
+    {
+        my_error("openpath",__LINE__);
+    }
+    while(ptr=readdir(dir)!=NULL)
+     {
+         int hanzi=0;
+         int nohanzi=0;
+         for(int i=0;i<strlen(ptr->d_name[i]);i++)
+          {    
+              if(ptr->d_name[i]<0)
+              hanzi++;
+              else
+              nohanzi++;
+          }
+        int len=hanzi/3+nohanzi;
+        if(g_maxlen<len)
+        g_maxlen=len;
+
+        cnt++;
+     }
+     closedir(dir);
+
+     if(cnt>256)  //过多文件
+      printf("%d :too many files under this dir",__LINE__);
+      
+      
+      
+      dir=opendir(path);
+     for(int i=0;i<cnt;i++)
+     {
+         if(ptr=readdir(dir)==NULL)
+          {
+              my_error("readdir",__LINE__);
+          }
+
+         strncpy(filename[i],path,strlen(path));
+         filename[i][strlen(path)]='\0';
+         strcat(filename,ptr->d_name);
+         filename[i][strlen(path)+strlen(ptr->d_name)]='\0';
+         closedir(dir);
+
+     }
+      
+       if(flag&PARAM_t)
+        {
+             flag-=PARAM_t;
+             struct stat buf;
+             for(int i=0;i<cnt;i++)
+              {
+                  if(stat(filename[i],&buf)==-1)
+                   {
+                       my_error("stat",__LINE__);
+                   }
+                   filetime[i]=buf.st_mtime;
+              }
+             time_quicksort(filetime,filename,0,cnt);
+            
+        }
+        else
+        
+
+
+
+
+
 }
+
 int main(int argc,char*argv[])
 {
    
