@@ -17,8 +17,10 @@
 #define PARAM_r 16
 #define PARAM_i 32
 #define PARAM_s 64
+#define MAXROWLEN  155 
 int h=0,h_max=2;
 int g_maxlen;   //一行最多输出个数
+int g_leave_len = MAXROWLEN;
 void my_error(const char * err_string,int line)
 {
     fprintf(stderr,"line:%d ",line);
@@ -157,6 +159,57 @@ void ls_s(int color,char * name)
      }
 }
 
+void ls_R(char *path)
+{    struct stat buf;
+     struct dirent *ptr;
+     DIR *dir;
+     char dirname[256][PATH_MAX+1];
+     char tmpname[PATH_MAX+1];
+     int k=0;
+     if((dir=opendir(path))==NULL)
+      {
+          my_error("opendir",__LINE__);
+      }
+
+       while(ptr=(readdir(dir))!=NULL)
+        {
+            if(ptr->d_name=='.')
+             {
+                 continue;
+             }
+
+             if(path[strlen(path)-1]=='/')
+              {
+                  sprintf(tmpname,"%s%s",path,ptr->d_name);
+              }
+              else
+                  sprintf(tmpname,"%s/%s",path,ptr->d_name);
+            
+                  if(lstat(tmpname,&buf)==NULL)
+                   {
+                       my_error("lstat",__LINE__);
+                   }
+
+                printf("%s/t",ptr->d_name);
+                  
+                   if(S_ISDIR(buf.st_mode))
+                     {
+                         strcpy(dirname[k++],tmpname);
+                     }
+                
+                if(k>256)  //过多文件
+      printf("%d :too many files under this dir",__LINE__);
+                            
+        }
+           closedir(ptr);
+           for(int i=0;i<k;i++)
+                   {
+                       ls_R(dirname[i]);
+                   }
+          return;
+     
+}
+
 void time_quicksort(long filetime[],char **filename,int begin,int end)
 {  char tmpname[PATH_MAX+1];
    if(begin>end)
@@ -195,7 +248,123 @@ void time_quicksort(long filetime[],char **filename,int begin,int end)
      time_quicksort(filetime,filename,i+1,end);
 }
 
-//ls -t //不用单独实现   
+//  
+void display(int flag,char *pathname)
+{
+          int i,j,filecolor;
+          char name[PATH_MAX+1];
+          struct stat buf;
+          for(i=0;i<strlen(pathname);i++)
+           {
+               if(pathname[i]=='/')
+                {
+                     j=0;
+                     continue;
+                }
+                name[j++]=pathname[i];
+           }
+
+
+           if(flag&PARAM_NONE)
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				display_single(name,filecolor);
+            }
+           else if(flag&PARAM_i)
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_i(name,filecolor);
+            }
+            else if(flag&PARAM_a)
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				display_single(name,filecolor);
+            }
+            else if(flag&PARAM_s)
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_s(name,filecolor);
+            }
+            else if(flag&(PARAM_i+PARAM_a))
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_i(name,filecolor);
+            }
+            else if(flag&(PARAM_a+PARAM_l))
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_l(name,filecolor);
+            }
+            else if(flag&(PARAM_i+PARAM_s))
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_s(name,filecolor);
+            }
+            else if(flag&(PARAM_l+PARAM_s))
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+                if(name[0]!='.')
+                {
+                   printf("%d/t",buf.st_blocks/2);
+				ls_l(name,filecolor);
+                }
+            }
+            else if(flag&(PARAM_i+PARAM_l))
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+                if(name[0] != '.')
+            {
+				printf("%d ",buf.st_ino);
+				ls_l(name,filecolor);
+			}
+				
+            }
+            else if(flag&(PARAM_i+PARAM_s))
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+                  if(name[0] != '.')
+            {
+				printf("%d ",buf.st_ino);
+                printf("%d ",buf.st_blocks/2);
+				ls_l(name,filecolor);
+			}
+            }
+            else if(flag&PARAM_i)
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_i(name,filecolor);
+            }
+            else if(flag&PARAM_i)
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_i(name,filecolor);
+            }
+            else if(flag&PARAM_i)
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_i(name,filecolor);
+            }
+            else if(flag&PARAM_i)
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_i(name,filecolor);
+            }
+            else if(flag&PARAM_i)
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_i(name,filecolor);
+            }
+            else if(flag&PARAM_i)
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_i(name,filecolor);
+            }
+            else if(flag&PARAM_i)
+            {
+                h_max= g_leave_len/(g_maxlen+15);
+				ls_i(name,filecolor);
+            }
+}
 
 void display_dir(int flag,char*path)
 {
@@ -204,10 +373,12 @@ void display_dir(int flag,char*path)
     int cnt=0;  //计算文件个数
     char filename[256][PATH_MAX+1];
     long filetime[256];
+    char tmpfilename[PATH_MAX+1];
+    struct stat buf;
     dir=opendir(path);
     if(dir==NULL)
     {
-        my_error("openpath",__LINE__);
+        my_error("opendir",__LINE__);
     }
     while(ptr=readdir(dir)!=NULL)
      {
@@ -264,8 +435,74 @@ void display_dir(int flag,char*path)
              time_quicksort(filetime,filename,0,cnt);
             
         }
-        else
-        
+        else   //用文件名首字母排序
+         {
+              for(int i=0;i<cnt;i++)
+		  {
+			for(int j=i;j<cnt;j++)
+			{
+				if(strcmp(filename[i],filename[j])>0)
+				{
+					strcpy(tmpfilename,filename[i]);
+					strcpy(filename[i],filename[j]);
+					strcpy(filename[j],tmpfilename);
+				}
+			}
+		   } 
+         }
+          
+          int total=0;
+         //计算总量
+          if(flag&PARAM_a)   //包括隐藏文件
+           {
+               for(int i=0;i<cnt;i++)
+                {
+                    if(stat(filename[i],&buf)==NULL)
+                     {
+                         my_error("stat",__LINE__);
+                     }
+                    total=total+buf.st_blocks/2; //？？？
+                }
+           }
+          else
+           {
+                for(int i=0;i<cnt;i++)
+                {
+                    if(stat(filename[i],&buf)==NULL)
+                     {
+                         my_error("stat",__LINE__);
+                     }
+                     if(filename[i][2]!='.')
+                    total=total+buf.st_blocks/2; //？？？
+                }
+           }
+
+           if((flag&PARAM_l||flag&PARAM_s))
+            {
+               printf("总用量 %d\n",total);
+            }
+
+
+            if(flag&PARAM_r)
+              {   
+                  if(flag&PARAM_R)  //??
+                    {
+                            ls_R(path);
+                    }
+                    else
+                     {
+                         for(int i=cnt;i>=0;i--)
+                           display(flag,filename[i]);
+                     }
+              }
+            else
+             {
+                     if(flag&PARAM_R)
+                      {
+                          ls_R(path);
+                      }
+             }
+
 
 
 
