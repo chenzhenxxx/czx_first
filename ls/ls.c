@@ -19,7 +19,7 @@
 #define PARAM_s 64
 #define MAXROWLEN  155 
 int h=0,h_max=2;
-int g_maxlen;   //一行最多输出个数
+int g_maxlen;  
 int g_leave_len = MAXROWLEN;
 void my_error(const char * err_string,int line)
 {
@@ -28,7 +28,26 @@ void my_error(const char * err_string,int line)
     exit(1);
 }
 
-void ls_a(struct stat buf,char *name,int color)
+void  display_single(char *name ,int color)
+{
+     if(g_leave_len<g_maxlen)
+      {
+          printf("\n");
+          g_leave_len=MAXROWLEN;
+      }
+      char colorname[PATH_MAX+1];
+      int i,len,j = 0;
+	  len = strlen(name);
+      sprintf(colorname,"\033[%dm%s\033[0m",color,name);
+      printf("%s",colorname);
+	  for(i=0;i<g_maxlen-len;i++)
+       {
+           printf(" ");
+       }
+       printf("  ");
+       g_leave_len-=(g_maxlen+2);
+}
+void ls_l(struct stat buf,char *name,int color)
 {
        char colorname[PATH_MAX+1];
        struct passwd *uid;
@@ -53,19 +72,27 @@ void ls_a(struct stat buf,char *name,int color)
           //user 权限
           if(buf.st_mode&S_IRUSR)
           printf("r");
-          else if(buf.st_mode&S_IWUSR)
+          else printf("-");
+          if(buf.st_mode&S_IWUSR)
           printf("w");
-          else if(buf.st_mode&S_IXUSR)
+          else 
+          printf("-");
+          if(buf.st_mode&S_IXUSR)
           printf("x");
           else
           printf("-");
+          
 
           //group 权限
           if(buf.st_mode&S_IRGRP)
           printf("r");
-          else if(buf.st_mode&S_IWGRP)
+          else
+          printf("-");
+          if(buf.st_mode&S_IWGRP)
           printf("w");
-          else if(buf.st_mode&S_IXGRP)
+           else
+          printf("-");
+          if(buf.st_mode&S_IXGRP)
           printf("x");
           else
           printf("-");
@@ -73,16 +100,20 @@ void ls_a(struct stat buf,char *name,int color)
           //other 权限
           if(buf.st_mode&S_IROTH)
           printf("r");
-          else if(buf.st_mode&S_IWOTH)
-          printf("w");
-          else if(buf.st_mode&S_IXOTH)
-          printf("x");
-          else
+           else
           printf("-");
-          printf("  ");
+          if(buf.st_mode&S_IWOTH)
+          printf("w");
+           else
+          printf("-");
+          if(buf.st_mode&S_IXOTH)
+          printf("x");
+           else
+          printf("-");
+          printf(" ");
 
           //链接数
-          printf("%4d",buf.st_nlink);
+          printf("%4lu ",buf.st_nlink);
           //uid和gid
           uid=getpwuid(buf.st_uid);
           gid=getgrgid(buf.st_uid);
@@ -90,11 +121,11 @@ void ls_a(struct stat buf,char *name,int color)
            {
                my_error("can't get id", __LINE__); // __LINE__正在编译的行号
            }
-          printf("%-8s",uid->pw_name);
+          printf("%-8s  ",uid->pw_name);
           printf("%-8s",gid->gr_name);
            
            //文档容量大小
-          printf("%8d  ",buf.st_size);
+          printf("%8ld  ",buf.st_size);
           //最后修改时间
           strcpy(mtime,ctime(&buf.st_mtime));
           mtime[strlen(mtime)-1]='\0';  //不然会换行
@@ -106,7 +137,7 @@ void ls_a(struct stat buf,char *name,int color)
 
 }
 
-void ls_i(int color,char *name)
+void ls_i(char *name,int color)
 {   struct stat buf;
     if(stat(name,&buf)==-1)
     {
@@ -115,8 +146,8 @@ void ls_i(int color,char *name)
     int h_max=2,j=0,len=strlen(name);
        char colorname[NAME_MAX+1];
        h++;
-       printf("%7d ",buf.st_ino);
-       sprintf(colorname,"\033[%dm%s\033]m",color,name);
+       printf("%7ld ",buf.st_ino);
+       sprintf(colorname,"\033[%dm%s\033[0m",color,name);
        printf("%-s",colorname);
 
        for(int i=0;i<len;i++)
@@ -135,7 +166,7 @@ void ls_i(int color,char *name)
 }
 
 
-void ls_s(int color,char * name)
+void ls_s(char * name,int color)
 {   char colorname[NAME_MAX+1];
     struct stat buf;
     int len=strlen(name);
@@ -143,8 +174,8 @@ void ls_s(int color,char * name)
      {
          my_error("stat",__LINE__);
      }
-     sprintf(colorname,"/033[%dm%s\033[0m",color,name);
-     printf("%4d",buf.st_blocks);
+     sprintf(colorname,"\033[%dm%s\033[0m",color,name);
+     printf("%4ld",buf.st_blocks);
      printf("  %s",colorname);
      h++;
        len=g_maxlen-len;
@@ -163,17 +194,19 @@ void ls_R(char *path)
 {    struct stat buf;
      struct dirent *ptr;
      DIR *dir;
+     int color=37;
      char dirname[256][PATH_MAX+1];
      char tmpname[PATH_MAX+1];
      int k=0;
+     printf("%s :\n",path);
      if((dir=opendir(path))==NULL)
       {
           my_error("opendir",__LINE__);
       }
 
-       while(ptr=(readdir(dir))!=NULL)
+       while((ptr=readdir(dir))!=NULL)
         {
-            if(ptr->d_name=='.')
+            if(ptr->d_name[0]=='.')
              {
                  continue;
              }
@@ -185,15 +218,32 @@ void ls_R(char *path)
               else
                   sprintf(tmpname,"%s/%s",path,ptr->d_name);
             
-                  if(lstat(tmpname,&buf)==NULL)
+                  if(lstat(tmpname,&buf)==-1)
                    {
                        my_error("lstat",__LINE__);
                    }
 
-                printf("%s/t",ptr->d_name);
+
+                   if(S_ISDIR(buf.st_mode))
+     {
+        color=34;
+	}
+     
+    else if(S_ISBLK(buf.st_mode)){
+        color=36;
+	} 
+ 
+    if(color == 37&&
+    		( (buf.st_mode & S_IXUSR)||
+    		  (buf.st_mode & S_IXGRP)||
+    		  (buf.st_mode & S_IXOTH)   )  ){
+    	color=33;
+    }
+    
+                display_single(ptr->d_name,color);
                   
                    if(S_ISDIR(buf.st_mode))
-                     {
+                     {   
                          strcpy(dirname[k++],tmpname);
                      }
                 
@@ -201,16 +251,16 @@ void ls_R(char *path)
       printf("%d :too many files under this dir",__LINE__);
                             
         }
-           closedir(ptr);
+           closedir(dir);
            for(int i=0;i<k;i++)
-                   {
+                   {   printf("\n");
                        ls_R(dirname[i]);
                    }
           return;
      
 }
 
-void time_quicksort(long filetime[],char **filename,int begin,int end)
+void time_quicksort(long filetime[],char filename[256][PATH_MAX+1],int begin,int end)
 {  char tmpname[PATH_MAX+1];
    if(begin>end)
    return ;
@@ -249,121 +299,172 @@ void time_quicksort(long filetime[],char **filename,int begin,int end)
 }
 
 //  
-void display(int flag,char *pathname)
+void display_file(int flag,char *filename)
 {
-          int i,j,filecolor;
+          int i,j=0,filecolor=37;//白色
           char name[PATH_MAX+1];
           struct stat buf;
-          for(i=0;i<strlen(pathname);i++)
+        memset(name,'\0',PATH_MAX+1);
+          for(i=0;i<strlen(filename);i++)
            {
-               if(pathname[i]=='/')
+               if(filename[i]=='/')
                 {
                      j=0;
                      continue;
                 }
-                name[j++]=pathname[i];
+                name[j++]=filename[i];
            }
+            name[j]='\0'; //别漏掉'\0';
+           
+           //printf("hh=%s\n",name);
 
+                   //判断颜色
+                 if(lstat(filename,&buf)==-1)
+                   {
+                       my_error("lstat",__LINE__);
+                   }
 
-           if(flag&PARAM_NONE)
+     if(S_ISDIR(buf.st_mode))
+     {
+        filecolor=34;
+	}
+     
+    else if(S_ISBLK(buf.st_mode)){
+        filecolor=36;
+	} 
+ 
+    if(filecolor == 37&&
+    		( (buf.st_mode & S_IXUSR)||
+    		  (buf.st_mode & S_IXGRP)||
+    		  (buf.st_mode & S_IXOTH)   )  ){
+    	filecolor=33;
+    }
+    
+
+              //解析参数 //不用t,r,R,在之前就已经先判断了 //display_dir()时
+           if(flag==PARAM_NONE)
+            {   if(name[0]!='.')
+                { 
+                    h_max= g_leave_len/(g_maxlen+15);
+				    display_single(name,filecolor);
+                }
+            }
+            else if(flag==PARAM_r)
+             {
+                 if(name[0]!='.')
+                  {   
+                      h_max=g_leave_len/(g_maxlen+15);
+                      display_single(name,filecolor);
+                  }
+             }
+            else if(flag==PARAM_l)
+             {    
+                 if(name[0]!='.')
+                  {
+                      ls_l(buf,name,filecolor);
+                  }
+             }
+           else if(flag==PARAM_i)
+            {  if(name[0]!='.')
+                {
+                    h_max= g_leave_len/(g_maxlen+15);
+				    ls_i(name,filecolor);
+                }
+            }
+            else if(flag==PARAM_a)
             {
                 h_max= g_leave_len/(g_maxlen+15);
 				display_single(name,filecolor);
             }
-           else if(flag&PARAM_i)
+            else if(flag==PARAM_s)
+            {   if(name[0]!='.')
+                {
+                    h_max= g_leave_len/(g_maxlen+15);
+				    ls_s(name,filecolor);
+                }
+            }
+            else if(flag==(PARAM_i+PARAM_a))
             {
                 h_max= g_leave_len/(g_maxlen+15);
 				ls_i(name,filecolor);
             }
-            else if(flag&PARAM_a)
+            else if(flag==(PARAM_a+PARAM_l))
             {
                 h_max= g_leave_len/(g_maxlen+15);
-				display_single(name,filecolor);
+				ls_l(buf,name,filecolor);
             }
-            else if(flag&PARAM_s)
-            {
-                h_max= g_leave_len/(g_maxlen+15);
-				ls_s(name,filecolor);
-            }
-            else if(flag&(PARAM_i+PARAM_a))
-            {
-                h_max= g_leave_len/(g_maxlen+15);
-				ls_i(name,filecolor);
-            }
-            else if(flag&(PARAM_a+PARAM_l))
-            {
-                h_max= g_leave_len/(g_maxlen+15);
-				ls_l(name,filecolor);
-            }
-            else if(flag&(PARAM_i+PARAM_s))
-            {
+            else if(flag==(PARAM_i+PARAM_s))
+            {   if(name[0]!='.')
+              { printf("%ld ",buf.st_ino);
                 h_max= g_leave_len/(g_maxlen+15);
 				ls_s(name,filecolor);
+              }
             }
-            else if(flag&(PARAM_l+PARAM_s))
-            {
+            else if(flag==(PARAM_l+PARAM_s))
+            {  
                 h_max= g_leave_len/(g_maxlen+15);
                 if(name[0]!='.')
                 {
-                   printf("%d/t",buf.st_blocks/2);
-				ls_l(name,filecolor);
+                   printf("%ld/t",buf.st_blocks/2);
+				ls_l(buf,name,filecolor);
                 }
             }
-            else if(flag&(PARAM_i+PARAM_l))
+            else if(flag==(PARAM_i+PARAM_l))
             {
                 h_max= g_leave_len/(g_maxlen+15);
                 if(name[0] != '.')
             {
-				printf("%d ",buf.st_ino);
-				ls_l(name,filecolor);
+				printf("%ld ",buf.st_ino);
+				ls_l(buf,name,filecolor);
 			}
 				
             }
-            else if(flag&(PARAM_i+PARAM_s))
+            else if(flag==(PARAM_i+PARAM_s))
             {
                 h_max= g_leave_len/(g_maxlen+15);
                   if(name[0] != '.')
             {
-				printf("%d ",buf.st_ino);
-                printf("%d ",buf.st_blocks/2);
-				ls_l(name,filecolor);
+				printf("%ld ",buf.st_ino);
+                printf("%ld ",buf.st_blocks/2);
+				ls_l(buf,name,filecolor);
 			}
             }
-            else if(flag&PARAM_i)
+            else if(flag==(PARAM_i+PARAM_a+PARAM_s))
             {
                 h_max= g_leave_len/(g_maxlen+15);
-				ls_i(name,filecolor);
+                printf("%ld ",buf.st_ino);
+				ls_s(name,filecolor);
             }
-            else if(flag&PARAM_i)
+            else if(flag==(PARAM_l+PARAM_s+PARAM_a))
             {
                 h_max= g_leave_len/(g_maxlen+15);
-				ls_i(name,filecolor);
+                printf("%ld ",buf.st_blocks/2);
+				ls_l(buf,name,filecolor);
             }
-            else if(flag&PARAM_i)
+            else if(flag==(PARAM_i+PARAM_s+PARAM_l))
+            {   if(name[0]!='.')
+              {
+
+                h_max= g_leave_len/(g_maxlen+15);
+                printf("%ld ",buf.st_ino);
+                 printf("%ld ",buf.st_blocks);
+				ls_l(buf,name,filecolor);
+              }
+            }
+            else if(flag==(PARAM_i+PARAM_a+PARAM_l))
             {
                 h_max= g_leave_len/(g_maxlen+15);
-				ls_i(name,filecolor);
+                printf("%ld ",buf.st_ino);
+				ls_l(buf,name,filecolor);
             }
-            else if(flag&PARAM_i)
+            else if(flag==(PARAM_i+PARAM_a+PARAM_l+PARAM_s))
             {
                 h_max= g_leave_len/(g_maxlen+15);
-				ls_i(name,filecolor);
+                printf("%ld  ",buf.st_ino);
+			printf("%ld  ",buf.st_blocks/2);
+				ls_l(buf,name,filecolor);
             }
-            else if(flag&PARAM_i)
-            {
-                h_max= g_leave_len/(g_maxlen+15);
-				ls_i(name,filecolor);
-            }
-            else if(flag&PARAM_i)
-            {
-                h_max= g_leave_len/(g_maxlen+15);
-				ls_i(name,filecolor);
-            }
-            else if(flag&PARAM_i)
-            {
-                h_max= g_leave_len/(g_maxlen+15);
-				ls_i(name,filecolor);
-            }
+            
 }
 
 void display_dir(int flag,char*path)
@@ -380,11 +481,11 @@ void display_dir(int flag,char*path)
     {
         my_error("opendir",__LINE__);
     }
-    while(ptr=readdir(dir)!=NULL)
+    while((ptr=readdir(dir))!=NULL)
      {
          int hanzi=0;
          int nohanzi=0;
-         for(int i=0;i<strlen(ptr->d_name[i]);i++)
+         for(int i=0;i<strlen(ptr->d_name);i++)
           {    
               if(ptr->d_name[i]<0)
               hanzi++;
@@ -407,21 +508,22 @@ void display_dir(int flag,char*path)
       dir=opendir(path);
      for(int i=0;i<cnt;i++)
      {
-         if(ptr=readdir(dir)==NULL)
+         if((ptr=readdir(dir))==NULL)
           {
               my_error("readdir",__LINE__);
           }
 
          strncpy(filename[i],path,strlen(path));
          filename[i][strlen(path)]='\0';
-         strcat(filename,ptr->d_name);
+         strcat(filename[i],ptr->d_name);
          filename[i][strlen(path)+strlen(ptr->d_name)]='\0';
-         closedir(dir);
+       // printf("%d %s\n",i,filename[i]);
+         
 
      }
-      
+      closedir(dir);
        if(flag&PARAM_t)
-        {
+        {    
              flag-=PARAM_t;
              struct stat buf;
              for(int i=0;i<cnt;i++)
@@ -432,6 +534,7 @@ void display_dir(int flag,char*path)
                    }
                    filetime[i]=buf.st_mtime;
               }
+
              time_quicksort(filetime,filename,0,cnt);
             
         }
@@ -440,7 +543,7 @@ void display_dir(int flag,char*path)
               for(int i=0;i<cnt;i++)
 		  {
 			for(int j=i;j<cnt;j++)
-			{
+			{   
 				if(strcmp(filename[i],filename[j])>0)
 				{
 					strcpy(tmpfilename,filename[i]);
@@ -449,15 +552,17 @@ void display_dir(int flag,char*path)
 				}
 			}
 		   } 
+
          }
-          
+           //for(int i=0;i<cnt;i++)
+            //printf("%d %s\n",i,filename[i]);
           int total=0;
          //计算总量
           if(flag&PARAM_a)   //包括隐藏文件
            {
                for(int i=0;i<cnt;i++)
                 {
-                    if(stat(filename[i],&buf)==NULL)
+                    if(stat(filename[i],&buf)==-1)
                      {
                          my_error("stat",__LINE__);
                      }
@@ -468,7 +573,7 @@ void display_dir(int flag,char*path)
            {
                 for(int i=0;i<cnt;i++)
                 {
-                    if(stat(filename[i],&buf)==NULL)
+                    if(stat(filename[i],&buf)==-1)
                      {
                          my_error("stat",__LINE__);
                      }
@@ -490,9 +595,11 @@ void display_dir(int flag,char*path)
                             ls_R(path);
                     }
                     else
-                     {
-                         for(int i=cnt;i>=0;i--)
-                           display(flag,filename[i]);
+                     {    
+                         for(int i=cnt-1;i>=0;i--)
+                           { 
+                           display_file(flag,filename[i]);
+                           }
                      }
               }
             else
@@ -501,6 +608,15 @@ void display_dir(int flag,char*path)
                       {
                           ls_R(path);
                       }
+                      else
+                       {   
+                           for(int i=0;i<cnt;i++)
+                            {
+                              
+                            display_file(flag,filename[i]);
+                            }
+                       }
+
              }
 
 
@@ -552,8 +668,8 @@ int main(int argc,char*argv[])
         }
 
          if(num+1==argc)  //说明命令中没有路径，所以默认路径为./当前目录下
-       {
-          strcpy(path,'./');
+       {   //printf("1\n");
+          strcpy(path,"./");
           path[2]='\0';
            display_dir(flag,path);
           return 0;
