@@ -18,7 +18,7 @@
 #define PARAM_i 32
 #define PARAM_s 64
 #define MAXROWLEN  155 
-int h=0,h_max=5;
+int h=0,h_max=4;
 int g_maxlen;  
 int g_leave_len = MAXROWLEN;
 void my_error(const char * err_string,int line);
@@ -254,26 +254,36 @@ void ls_i(char *name,int color)
     {
         my_error("stat",__LINE__);
     }
-    int h_max=2,j=0,len=strlen(name);
+    int j=0,len=strlen(name);
        char colorname[NAME_MAX+1];
        h++;
        printf("%7ld ",buf.st_ino);
        sprintf(colorname,"\033[%dm%s\033[0m",color,name);
        printf("%-s",colorname);
 
-       for(int i=0;i<len;i++)
-       {
-           if(name[i]<0)
-                j++;   
-       }
-       len=g_maxlen-len+j/3;
-        for(int i=0;i<len+5;i++)
+       //for(int i=0;i<len;i++)
+       //{
+          // if(name[i]<0)
+               // j++;   
+       //}
+       len=g_maxlen-len;
+        for(int i=0;i<len;i++)
 		printf(" ");
-	if( h == h_max)
-	{
-		printf("\n");
-		h = 0;
-	}
+        printf(" ");
+         g_leave_len-=(g_maxlen+1);
+      if(g_leave_len<=g_maxlen)
+       {
+           printf("\n");
+          g_leave_len=MAXROWLEN;
+          h=0;
+       }
+     if(h==h_max)
+     {
+         printf("\n");
+         h=0;
+         g_leave_len=MAXROWLEN;
+     }
+    
 }
 
 
@@ -281,24 +291,34 @@ void ls_s(char * name,int color)
 {   char colorname[NAME_MAX+1];
     struct stat buf;
     int len=strlen(name);
+
     if(stat(name,&buf)==-1)
      {
          my_error("stat",__LINE__);
      }
      sprintf(colorname,"\033[%dm%s\033[0m",color,name);
-     printf("%4ld",buf.st_blocks);
-     printf("  %s",colorname);
-     h++;
+     printf("%ld",buf.st_blocks/2);
+     printf(" %s",colorname);
        len=g_maxlen-len;
-     for(int i=0;i<len+4;i++)
+     for(int i=0;i<len+1;i++)
       {
           printf(" ");
       }
-     if(h==h_max)
+      h++;
+      g_leave_len-=(g_maxlen+1);
+      if(g_leave_len<=g_maxlen)
+       {
+           printf("\n");
+          g_leave_len=MAXROWLEN;
+          h=0;
+       }
+      if(h==h_max)
      {
          printf("\n");
          h=0;
+         g_leave_len=MAXROWLEN;
      }
+      
 }
 
 void ls_R(char *path,int flag)
@@ -486,7 +506,7 @@ void display_file(int flag,char *filename)
              }
            else if(flag==PARAM_i)
             {  if(name[0]!='.')
-                {
+                {    
                     h_max= g_leave_len/(g_maxlen+15);
 				    ls_i(name,filecolor);
                 }
@@ -525,10 +545,14 @@ void display_file(int flag,char *filename)
                 h_max= g_leave_len/(g_maxlen+15);
                 if(name[0]!='.')
                 {
-                   printf("%ld/t",buf.st_blocks/2);
+                   printf("%ld\t",buf.st_blocks/2);
 				ls_l(buf,name,filecolor);
                 }
             }
+            else if(flag==(PARAM_a+PARAM_s))
+             {    h_max= g_leave_len/(g_maxlen+15);;
+                  ls_s(name,filecolor);
+             }
             else if(flag==(PARAM_i+PARAM_l))
             {
                 h_max= g_leave_len/(g_maxlen+15);
@@ -693,7 +717,7 @@ void display_dir(int flag,char*path)
            }
           else
            {
-                for(int i=0;i<cnt;i++)////
+                for(int i=0;i<cnt;i++)
                 {
                     if(lstat(filename[i],&buf)==-1)
                      {
