@@ -18,9 +18,106 @@
 #define PARAM_i 32
 #define PARAM_s 64
 #define MAXROWLEN  155 
-int h=0,h_max=2;
+int h=0,h_max=5;
 int g_maxlen;  
 int g_leave_len = MAXROWLEN;
+void my_error(const char * err_string,int line);
+void  display_single(char *name ,int color);
+void ls_l(struct stat buf,char *name,int color);
+void ls_i(char *name,int color);
+void ls_s(char * name,int color);
+void ls_R(char *path,int flag);
+void display_dir(int flag,char*path);
+void display_file(int flag,char *filename);
+void time_quicksort(long filetime[],char filename[256][PATH_MAX+1],int begin,int end);
+
+int main(int argc,char*argv[])
+{
+   
+   char path[PATH_MAX+1];   //写入路径
+   int flag;  //判断参数。
+   struct stat buf;
+   int cnt=0,num=0;
+   char param[100];
+   flag=PARAM_NONE;
+   for(int i=1;i<argc;i++)
+    {
+        if(argv[i][0]=='-')
+         {
+             for(int j=1;j<strlen(argv[i]);j++)
+              {
+                  param[cnt++]=argv[i][j];
+              }
+            num++;
+         } 
+    }
+
+     //通过flag标记参数
+      for(int k=0;k<cnt;k++)
+       {
+          if(param[k]=='a')
+            flag|=PARAM_a;
+             else if(param[k]=='l')
+            flag|=PARAM_l;
+             else if(param[k]=='i')
+            flag|=PARAM_i;
+             else if(param[k]=='R')
+            flag|=PARAM_R;
+             else if(param[k]=='r')
+            flag|=PARAM_r;
+             else if(param[k]=='t')
+            flag|=PARAM_t;
+             else if(param[k]=='s')
+            flag|=PARAM_s;
+          
+        }
+
+         if(num+1==argc)  //说明命令中没有路径，所以默认路径为./当前目录下
+       {   //printf("1\n");
+          strcpy(path,"./");
+          path[2]='\0';
+           display_dir(flag,path);
+          return 0;
+       }
+       
+       for(int m=1;m<argc;m++)
+         {    
+              if(argv[m][0]=='-')
+               {
+                   
+                   continue;
+               }
+              
+              else
+               {  if(stat(path,&buf)==-1)
+                    {
+                        my_error("stat",__LINE__);
+                    }
+                   if(S_ISDIR(buf.st_mode))  //是不是目录
+                    {   if(path[strlen(argv[m])-1]!='/')
+                         {
+                           path[strlen(argv[m])]='/';
+                           path[strlen(argv[m])+1]='\0';
+                         }
+                         else
+                         {
+                             path[strlen(argv[m])]='\0';
+                         }
+                        strcpy(path,argv[m]);
+                        display_dir(flag,path);
+                    }
+
+                   else  //是文件
+                    {   
+                        strcpy(path,argv[m]);
+                        display_file(flag,path);
+
+                    } 
+               }
+         }
+         return 0;
+}
+
 void my_error(const char * err_string,int line)
 {
     fprintf(stderr,"line:%d ",line);
@@ -30,22 +127,36 @@ void my_error(const char * err_string,int line)
 
 void  display_single(char *name ,int color)
 {
-     if(g_leave_len<g_maxlen)
+     if(g_leave_len<=g_maxlen)
       {
           printf("\n");
           g_leave_len=MAXROWLEN;
+          h=0;
       }
       char colorname[PATH_MAX+1];
       int i,len,j = 0;
 	  len = strlen(name);
       sprintf(colorname,"\033[%dm%s\033[0m",color,name);
+      if(color==34)
+      printf("%s/",colorname);
+      else if(color==33)
+      printf("%s*",colorname);
+      else
       printf("%s",colorname);
+
 	  for(i=0;i<g_maxlen-len;i++)
        {
            printf(" ");
        }
        printf("  ");
        g_leave_len-=(g_maxlen+2);
+       h++;
+       if(h==h_max)
+        {
+            printf("\n");
+            h=0;
+            g_leave_len=MAXROWLEN;
+        }
 }
 void ls_l(struct stat buf,char *name,int color)
 {
@@ -190,7 +301,7 @@ void ls_s(char * name,int color)
      }
 }
 
-void ls_R(char *path)
+void ls_R(char *path,int flag)
 {    struct stat buf;
      struct dirent *ptr;
      DIR *dir;
@@ -238,8 +349,13 @@ void ls_R(char *path)
     		  (buf.st_mode & S_IXGRP)||
     		  (buf.st_mode & S_IXOTH)   )  ){
     	color=33;
-    }
-    
+    }            
+
+                
+                if((flag-PARAM_R)!=0&&color!=34)
+                {  display_file(flag,ptr->d_name);
+                }
+                else
                 display_single(ptr->d_name,color);
                   
                    if(S_ISDIR(buf.st_mode))
@@ -254,7 +370,10 @@ void ls_R(char *path)
            closedir(dir);
            for(int i=0;i<k;i++)
                    {   printf("\n");
-                       ls_R(dirname[i]);
+                       if((flag-PARAM_R)!=0&color==34)
+                       { display_dir(flag,dirname[i]);
+                       }
+                       ls_R(dirname[i],flag);
                    }
           return;
      
@@ -262,7 +381,7 @@ void ls_R(char *path)
 
 void time_quicksort(long filetime[],char filename[256][PATH_MAX+1],int begin,int end)
 {  char tmpname[PATH_MAX+1];
-   if(begin>end)
+   if(begin>=end)
    return ;
     int i=begin;
     int j=end;
@@ -297,6 +416,7 @@ void time_quicksort(long filetime[],char filename[256][PATH_MAX+1],int begin,int
     time_quicksort(filetime,filename,0,i-1);
      time_quicksort(filetime,filename,i+1,end);
 }
+
 
 //  
 void display_file(int flag,char *filename)
@@ -340,11 +460,11 @@ void display_file(int flag,char *filename)
     	filecolor=33;
     }
     
-
+        
               //解析参数 //不用t,r,R,在之前就已经先判断了 //display_dir()时
            if(flag==PARAM_NONE)
             {   if(name[0]!='.')
-                { 
+                {   
                     h_max= g_leave_len/(g_maxlen+15);
 				    display_single(name,filecolor);
                 }
@@ -492,7 +612,7 @@ void display_dir(int flag,char*path)
               else
               nohanzi++;
           }
-        int len=hanzi/3+nohanzi;
+        int len=hanzi*2+nohanzi;
         if(g_maxlen<len)
         g_maxlen=len;
 
@@ -535,23 +655,25 @@ void display_dir(int flag,char*path)
                    filetime[i]=buf.st_mtime;
               }
 
-             time_quicksort(filetime,filename,0,cnt);
+             time_quicksort(filetime,filename,0,cnt-1);
             
         }
         else   //用文件名首字母排序
          {
-              for(int i=0;i<cnt;i++)
-		  {
-			for(int j=i;j<cnt;j++)
-			{   
-				if(strcmp(filename[i],filename[j])>0)
-				{
-					strcpy(tmpfilename,filename[i]);
-					strcpy(filename[i],filename[j]);
-					strcpy(filename[j],tmpfilename);
-				}
-			}
-		   } 
+           
+		   for(int i=0;i<cnt;i++)
+            for(int j=i;j<cnt;j++)
+             {    char tmpname[PATH_MAX+1];
+                 if(strcmp(filename[j],filename[i])<0)
+                   {
+                       strcpy(tmpname,filename[i]);
+                       strcpy(filename[i],filename[j]);
+                     strcpy(filename[j],tmpname);
+
+                   }
+
+             }
+
 
          }
            //for(int i=0;i<cnt;i++)
@@ -571,11 +693,11 @@ void display_dir(int flag,char*path)
            }
           else
            {
-                for(int i=0;i<cnt;i++)
+                for(int i=0;i<cnt;i++)////
                 {
-                    if(stat(filename[i],&buf)==-1)
+                    if(lstat(filename[i],&buf)==-1)
                      {
-                         my_error("stat",__LINE__);
+                         my_error("lstat",__LINE__);
                      }
                      if(filename[i][2]!='.')
                     total=total+buf.st_blocks/2; //？？？
@@ -592,7 +714,7 @@ void display_dir(int flag,char*path)
               {   
                   if(flag&PARAM_R)  //??
                     {
-                            ls_R(path);
+                            ls_R(path,flag);
                     }
                     else
                      {    
@@ -606,7 +728,7 @@ void display_dir(int flag,char*path)
              {
                      if(flag&PARAM_R)
                       {
-                          ls_R(path);
+                          ls_R(path,flag);
                       }
                       else
                        {   
@@ -618,99 +740,5 @@ void display_dir(int flag,char*path)
                        }
 
              }
-
-
-
-
-
-
-}
-
-int main(int argc,char*argv[])
-{
-   
-   char path[PATH_MAX+1];   //写入路径
-   int flag;  //判断参数。
-   struct stat buf;
-   int cnt=0,num=0;
-   char param[100];
-   flag=PARAM_NONE;
-   for(int i=1;i<argc;i++)
-    {
-        if(argv[i][0]=='-')
-         {
-             for(int j=1;j<strlen(argv[i]);j++)
-              {
-                  param[cnt++]=argv[i][j];
-              }
-            num++;
-         } 
-    }
-
-     //通过flag标记参数
-      for(int k=0;k<cnt;k++)
-       {
-          if(param[k]=='a')
-            flag|=PARAM_a;
-             else if(param[k]=='l')
-            flag|=PARAM_l;
-             else if(param[k]=='i')
-            flag|=PARAM_i;
-             else if(param[k]=='R')
-            flag|=PARAM_R;
-             else if(param[k]=='r')
-            flag|=PARAM_r;
-             else if(param[k]=='t')
-            flag|=PARAM_t;
-             else if(param[k]=='s')
-            flag|=PARAM_s;
-          
-        }
-
-         if(num+1==argc)  //说明命令中没有路径，所以默认路径为./当前目录下
-       {   //printf("1\n");
-          strcpy(path,"./");
-          path[2]='\0';
-           display_dir(flag,path);
-          return 0;
-       }
-       
-       for(int m=1;m<argc;m++)
-         {    
-              if(argv[m][0]=='-')
-               {
-                   
-                   continue;
-               }
-              
-              else
-               {  if(stat(path,&buf)==-1)
-                    {
-                        my_error("stat",__LINE__);
-                    }
-                   if(S_ISDIR(buf.st_mode))  //是不是目录
-                    {   if(path[strlen(argv[m])-1]!='/')
-                         {
-                           path[strlen(argv[m])]='/';
-                           path[strlen(argv[m])+1]='\0';
-                         }
-                         else
-                         {
-                             path[strlen(argv[m])]='\0';
-                         }
-                        strcpy(path,argv[m]);
-                        display_dir(flag,path);
-                    }
-
-                   else  //是文件
-                    {   
-                        strcpy(path,argv[m]);
-                        display_file(flag,path);
-
-                    } 
-               }
-         }
-         return 0;
-
 
 }
