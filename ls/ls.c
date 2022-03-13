@@ -221,9 +221,7 @@ void ls_l(struct stat buf,char *name,int color)
           printf("x");
            else
           printf("-");
-          printf(" ");
-
-          //链接数
+    //链接数
           printf("%4lu ",buf.st_nlink);
           //uid和gid
           uid=getpwuid(buf.st_uid);
@@ -250,7 +248,7 @@ void ls_l(struct stat buf,char *name,int color)
 
 void ls_i(char *name,int color)
 {   struct stat buf;
-    if(stat(name,&buf)==-1)
+    if(lstat(name,&buf)==-1)
     {
         my_error("stat",__LINE__);
     }
@@ -269,7 +267,6 @@ void ls_i(char *name,int color)
        len=g_maxlen-len;
         for(int i=0;i<len;i++)
 		printf(" ");
-        printf(" ");
          g_leave_len-=(g_maxlen+1);
       if(g_leave_len<=g_maxlen)
        {
@@ -321,83 +318,88 @@ void ls_s(char * name,int color)
       
 }
 
-void ls_R(char *path,int flag)
-{    struct stat buf;
-     struct dirent *ptr;
-     DIR *dir;
-     int color=37;
-     char dirname[256][PATH_MAX+1];
-     char tmpname[PATH_MAX+1];
-     int k=0;
-     printf("%s :\n",path);
-     if((dir=opendir(path))==NULL)
-      {
-          my_error("opendir",__LINE__);
-      }
-
-       while((ptr=readdir(dir))!=NULL)
-        {
-            if(ptr->d_name[0]=='.')
-             {
-                 continue;
-             }
-
-             if(path[strlen(path)-1]=='/')
-              {
-                  sprintf(tmpname,"%s%s",path,ptr->d_name);
-              }
-              else
-                  sprintf(tmpname,"%s/%s",path,ptr->d_name);
-            
-                  if(lstat(tmpname,&buf)==-1)
-                   {
-                       my_error("lstat",__LINE__);
-                   }
-
-
-                   if(S_ISDIR(buf.st_mode))
-     {
-        color=34;
-	}
-     
-    else if(S_ISBLK(buf.st_mode)){
-        color=36;
-	} 
+void ls_R(char*name,int flag)
  
-    if(color == 37&&
-    		( (buf.st_mode & S_IXUSR)||
-    		  (buf.st_mode & S_IXGRP)||
-    		  (buf.st_mode & S_IXOTH)   )  ){
-    	color=33;
-    }            
-
-                
-                if((flag-PARAM_R)!=0&&color!=34)
-                {  display_file(flag,ptr->d_name);
-                }
-                else
-                display_single(ptr->d_name,color);
-                  
-                   if(S_ISDIR(buf.st_mode))
-                     {   
-                         strcpy(dirname[k++],tmpname);
-                     }
-                
-                if(k>256)  //过多文件
-      printf("%d :too many files under this dir",__LINE__);
-                            
-        }
-           closedir(dir);
-           for(int i=0;i<k;i++)
-                   {   printf("\n");
-                       if((flag-PARAM_R)!=0&color==34)
-                       { display_dir(flag,dirname[i]);
-                       }
-                       ls_R(dirname[i],flag);
-                   }
-          return;
-     
+{
+DIR * dir;
+struct dirent  *ptr;
+int     i,count = 0;
+struct stat buf;
+char name_dir[10000];
+if(chdir(name)<0)                              //将输入的目录改为当前目录，下面操作的前提
+{
+  my_error("chdir",__LINE__);
 }
+if(getcwd(name_dir,10000)<0){
+  my_error("getcwd",__LINE__);                   //获取当前目录的绝对路径（重要，下面的打开目录的操作需要这个路径，否则需要手动添加）
+}
+ printf("%s:\n",name_dir);
+ 
+ dir = opendir(name_dir);     //用新获得的路径打开目录
+if(dir==NULL){
+  my_error("opendir",__LINE__);
+}
+while((ptr = readdir(dir))!=NULL){
+  if(g_maxlen<strlen(ptr->d_name))
+         g_maxlen = strlen(ptr->d_name);
+    count++;
+}
+closedir(dir);
+ 
+//动态数组(用静态数组会爆)
+  char**filenames =(char**)malloc(count*sizeof(char*));    //要进行初始化 
+  memset(filenames,0,sizeof(char*)*count);
+ 
+for(i=0;i<count;i++){
+ 
+  filenames[i]=(char*)malloc(256*sizeof(char));
+  memset(filenames[i],0,sizeof(char)*256);
+}
+ 
+ 
+int j,len=strlen(name_dir);
+dir = opendir(name_dir);
+for(i=0;i<count;i++){
+    ptr = readdir(dir);
+    if(ptr == NULL){
+      my_error("readdir",__LINE__);
+    }
+ 
+    strcat(filenames[i],ptr->d_name);    //这里要注意用之前的初始化
+}
+for(i=0;i<count;i++)
+   display_file(flag,filenames[i]);
+  printf("\n");
+                          //递归实现核心部分
+ 
+      for(i=0;i<count;i++){
+ 
+          if(lstat(filenames[i],&buf)==-1)
+          {
+             my_error("stat",__LINE__);
+          }
+          if(strcmp(filenames[i],"..")==0)
+          continue;
+          if(filenames[i][0]=='.')
+          continue;
+          if(S_ISDIR(buf.st_mode)){
+            ls_R(filenames[i],flag);
+          }
+          else if(!S_ISDIR(buf.st_mode))
+           {
+             continue;
+           }
+               chdir("../");          //处理完一个目录后返回上一层
+        }
+ 
+    
+    for(i=0;i<count;i++)
+    {
+      free(filenames[i]);
+    }
+    free(filenames);
+    closedir(dir);          //在函数开始时打开，结束时关闭
+    }
 
 void time_quicksort(long filetime[],char filename[256][PATH_MAX+1],int begin,int end)
 {  char tmpname[PATH_MAX+1];
@@ -545,7 +547,7 @@ void display_file(int flag,char *filename)
                 h_max= g_leave_len/(g_maxlen+15);
                 if(name[0]!='.')
                 {
-                   printf("%ld\t",buf.st_blocks/2);
+                   printf("%ld ",buf.st_blocks/2);
 				ls_l(buf,name,filecolor);
                 }
             }
@@ -672,9 +674,9 @@ void display_dir(int flag,char*path)
              struct stat buf;
              for(int i=0;i<cnt;i++)
               {
-                  if(stat(filename[i],&buf)==-1)
+                  if(lstat(filename[i],&buf)==-1)
                    {
-                       my_error("stat",__LINE__);
+                       my_error("lstat",__LINE__);
                    }
                    filetime[i]=buf.st_mtime;
               }
@@ -735,15 +737,15 @@ void display_dir(int flag,char*path)
 
 
             if(flag&PARAM_r)
-              {   
+              {    flag-=PARAM_r;
                   if(flag&PARAM_R)  //??
-                    {
+                    {       flag-=PARAM_R;
                             ls_R(path,flag);
                     }
                     else
                      {    
                          for(int i=cnt-1;i>=0;i--)
-                           { 
+                           {  
                            display_file(flag,filename[i]);
                            }
                      }
@@ -751,7 +753,7 @@ void display_dir(int flag,char*path)
             else
              {
                      if(flag&PARAM_R)
-                      {
+                      {   flag-=PARAM_R;
                           ls_R(path,flag);
                       }
                       else
