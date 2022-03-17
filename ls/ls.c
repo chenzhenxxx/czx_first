@@ -254,7 +254,6 @@ void ls_i(char *name,int color)
 	int i,len,j = 0;
 	h++;
  
-	//printf("%d ", buf.st_ino);
 	len = strlen(name);             //名字的长度
 	for(i=0;i<len;i++)
 	{
@@ -505,7 +504,8 @@ void display_file(int flag,char *filename)
             {  if(name[0]!='.')
                 {    
                     h_max= g_leave_len/(g_maxlen+15);
-				    ls_i(name,filecolor);
+                    printf("%ld ",buf.st_ino);
+				           ls_i(name,filecolor);
                 }
             }
             else if(flag==PARAM_a)
