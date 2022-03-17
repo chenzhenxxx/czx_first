@@ -250,31 +250,40 @@ void ls_l(struct stat buf,char *name,int color)
 }
 
 void ls_i(char *name,int color)
-{   char colorname[NAME_MAX + 30];
-	int i,len,j = 0;
-	h++;
- 
-	len = strlen(name);             //名字的长度
-	for(i=0;i<len;i++)
-	{
-		if(name[i] < 0)
-		{
-			j++;
-		}
-	}
-	len = g_maxlen - len + j/3;
+{    struct stat buf;
+    if(stat(name,&buf)==-1)
+    {
+        my_error("stat",__LINE__);
+    }
+    int j=0,len=strlen(name);
+       char colorname[NAME_MAX+1];
+       h++;
+       printf("%7ld ",buf.st_ino);
+       sprintf(colorname,"\033[%dm%s\033[0m",color,name);
+       printf("%-s",colorname);
 
- 
-	sprintf(colorname,"\033[%dm%s\033[0m",color,name);
-	printf(" %-s", colorname);
-	//输出少于要求，补够空格
-    for(i=0;i<len+5;i++)
+       //for(int i=0;i<len;i++)
+       //{
+          // if(name[i]<0)
+               // j++;   
+       //}
+       len=g_maxlen-len;
+        for(int i=0;i<len;i++)
 		printf(" ");
-	if( h == h_max)
-	{
-		printf("\n");
-		h = 0;
-	}
+        printf(" ");
+         g_leave_len-=(g_maxlen+1);
+      if(g_leave_len<=g_maxlen)
+       {
+           printf("\n");
+          g_leave_len=MAXROWLEN;
+          h=0;
+       }
+     if(h==h_max)
+     {
+         printf("\n");
+         h=0;
+         g_leave_len=MAXROWLEN;
+     }
 }
 
 
