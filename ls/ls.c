@@ -18,7 +18,7 @@
 #define PARAM_i 32
 #define PARAM_s 64
 #define MAXROWLEN  155 
-int h=0,h_max=4;
+int h=0,h_max=2;
 int g_maxlen;  
 int g_leave_len = MAXROWLEN;
 void my_error(const char * err_string,int line);
@@ -89,9 +89,9 @@ int main(int argc,char*argv[])
                }
               
               else
-               {  if(stat(path,&buf)==-1)
+               {  if(lstat(path,&buf)==-1)
                     {
-                        my_error("stat",__LINE__);
+                        my_error("lstat",__LINE__);
                     }
                    if(S_ISDIR(buf.st_mode))  //是不是目录
                     {   if(path[strlen(argv[m])-1]!='/')
@@ -134,30 +134,29 @@ int cmp(const void *_a,const void *_b)
 
  void display_single(char *name,int filecolor)
 {
-	
 	char colorname[NAME_MAX + 30];
 	int i,len,j = 0;
 	len = strlen(name);
-	for(i=0;i<len;i++)
-	{
-		if(name[i] < 0)
-		{
-			j++;
-		}
-	}
-    len+=j;
-    if(g_leave_len<(g_maxlen+5)||h==h_max)
-    {
-        printf("\n");
-        g_leave_len=MAXROWLEN;
-        h=0;
-    }
-    sprintf(colorname,"\033[%dm%s\033[0m",filecolor,name);
-    printf("%-s",colorname);
-    for(i=0;i<g_maxlen-len+1;i++)
-     printf(" ");
-    g_leave_len-=(g_maxlen+1);
-   // printf("%d\t%d %d\n",h_max,g_maxlen,g_leave_len);
+    h++;
+       if(g_leave_len<=g_maxlen||h==h_max)
+       {
+           printf("\n");
+          g_leave_len=MAXROWLEN;
+          h=0;
+       }
+       sprintf(colorname,"\033[%dm%s\033[0m",filecolor,name);
+       printf(" %-s",colorname);
+
+       for(int i=0;i<len;i++)
+       {
+           if(name[i]<0)
+                j++;   
+       }
+       len=g_maxlen-len+j/3;
+        
+         g_leave_len-=(g_maxlen+10);
+       for(int i=0;i<len+6;i++)
+		   printf(" ");
 
 }
 
@@ -251,74 +250,76 @@ void ls_l(struct stat buf,char *name,int color)
 
 void ls_i(char *name,int color)
 {    struct stat buf;
-    if(stat(name,&buf)==-1)
+    if(lstat(name,&buf)==-1)
     {
-        my_error("stat",__LINE__);
+        my_error("lstat",__LINE__);
     }
     int j=0,len=strlen(name);
        char colorname[NAME_MAX+1];
        h++;
-       printf("%7ld ",buf.st_ino);
-       sprintf(colorname,"\033[%dm%s\033[0m",color,name);
-       printf("%-s",colorname);
-
-       //for(int i=0;i<len;i++)
-       //{
-          // if(name[i]<0)
-               // j++;   
-       //}
-       len=g_maxlen-len;
-        for(int i=0;i<len;i++)
-		printf(" ");
-        printf(" ");
-         g_leave_len-=(g_maxlen+1);
-      if(g_leave_len<=g_maxlen)
+       g_leave_len-=(g_maxlen+10);
+       if(g_leave_len<=g_maxlen||h==h_max)
        {
            printf("\n");
           g_leave_len=MAXROWLEN;
           h=0;
        }
-     if(h==h_max)
-     {
-         printf("\n");
-         h=0;
-         g_leave_len=MAXROWLEN;
-     }
+       printf("%7ld",buf.st_ino);
+       sprintf(colorname,"\033[%dm%s\033[0m",color,name);
+       printf(" %-s",colorname);
+
+       for(int i=0;i<len;i++)
+       {
+           if(name[i]<0)
+                j++;   
+       }
+       len=g_maxlen-len+j/3;
+
+       for(int i=0;i<len+6;i++)
+		   printf(" ");
+     
 }
 
 
 void ls_s(char * name,int color)
-{   char colorname[NAME_MAX+1];
-    struct stat buf;
-    int len=strlen(name);
-
-    if(stat(name,&buf)==-1)
-     {
-         my_error("stat",__LINE__);
-     }
-     sprintf(colorname,"\033[%dm%s\033[0m",color,name);
-     printf("%ld",buf.st_blocks/2);
-     printf(" %s",colorname);
-       len=g_maxlen-len;
-     for(int i=0;i<len+1;i++)
-      {
-          printf(" ");
-      }
-      h++;
-      g_leave_len-=(g_maxlen+1);
-      if(g_leave_len<=g_maxlen)
+{   struct stat buf;
+    if(lstat(name,&buf)==-1)
+    {
+        my_error("lstat",__LINE__);
+    }
+    int j=0,len=strlen(name);
+       char colorname[NAME_MAX+1];
+       
+       g_leave_len-=(g_maxlen+12);
+       if(g_leave_len<=g_maxlen)
        {
            printf("\n");
           g_leave_len=MAXROWLEN;
           h=0;
        }
-      if(h==h_max)
-     {
-         printf("\n");
-         h=0;
-         g_leave_len=MAXROWLEN;
-     }
-      
+       printf("%3ld",buf.st_blocks/2);
+       sprintf(colorname,"\033[%dm%s\033[0m",color,name);
+       printf(" %-s",colorname);
+       h++;
+       if(h==h_max)
+       {
+           printf("\n");
+          g_leave_len=MAXROWLEN;
+          h=0;
+       }
+       
+        else
+        {
+       for(int i=0;i<len;i++)
+       {
+           if(name[i]<0)
+                j++;   
+       }
+       len=g_maxlen-len+j/3;
+        
+       for(int i=0;i<len+2;i++)
+		   printf(" ");
+        }
 }
 
 void ls_R(char*name,int flag)
@@ -379,7 +380,7 @@ for(i=0;i<count;i++)
  
           if(lstat(filenames[i],&buf)==-1)
           {
-             my_error("stat",__LINE__);
+             my_error("lstat",__LINE__);
           }
           if(strcmp(filenames[i],"..")==0)
           continue;
@@ -490,7 +491,6 @@ void display_file(int flag,char *filename)
            if(flag==PARAM_NONE)
             {   if(name[0]!='.')
                 {   
-                    h_max= g_leave_len/(g_maxlen+15);
 				    display_single(name,filecolor);
                 }
             }
@@ -498,7 +498,7 @@ void display_file(int flag,char *filename)
              {
                  if(name[0]!='.')
                   {   
-                      h_max=g_leave_len/(g_maxlen+15);
+                     
                       display_single(name,filecolor);
                   }
              }
@@ -512,106 +512,103 @@ void display_file(int flag,char *filename)
            else if(flag==PARAM_i)
             {  if(name[0]!='.')
                 {    
-                    h_max= g_leave_len/(g_maxlen+15);
-                    printf("%ld ",buf.st_ino);
+                   
 				           ls_i(name,filecolor);
                 }
             }
             else if(flag==PARAM_a)
             {
-                h_max= g_leave_len/(g_maxlen+15);
 				display_single(name,filecolor);
             }
             else if(flag==PARAM_s)
             {   if(name[0]!='.')
                 {
-                    h_max= g_leave_len/(g_maxlen+15);
+               
 				    ls_s(name,filecolor);
                 }
             }
             else if(flag==(PARAM_i+PARAM_a))
             {
-                h_max= g_leave_len/(g_maxlen+15);
+                
 				ls_i(name,filecolor);
             }
             else if(flag==(PARAM_a+PARAM_l))
             {
-                h_max= g_leave_len/(g_maxlen+15);
+               
 				ls_l(buf,name,filecolor);
             }
             else if(flag==(PARAM_i+PARAM_s))
             {   if(name[0]!='.')
-              { printf("%ld ",buf.st_ino);
-                h_max= g_leave_len/(g_maxlen);
-				ls_s(name,filecolor);
+              { printf("%7ld ",buf.st_ino);
+				        ls_s(name,filecolor);
               }
             }
             else if(flag==(PARAM_l+PARAM_s))
             {  
-                h_max= g_leave_len/(g_maxlen+15);
+              
                 if(name[0]!='.')
                 {
-                   printf("%ld ",buf.st_blocks/2);
+                   printf("%3ld ",buf.st_blocks/2);
 				ls_l(buf,name,filecolor);
                 }
             }
             else if(flag==(PARAM_a+PARAM_s))
-             {    h_max= g_leave_len/(g_maxlen+15);
+             {    
                   ls_s(name,filecolor);
              }
             else if(flag==(PARAM_i+PARAM_l))
             {
-                h_max= g_leave_len/(g_maxlen+15);
+               
                 if(name[0] != '.')
             {
-				printf("%ld ",buf.st_ino);
+				printf("%7ld ",buf.st_ino);
 				ls_l(buf,name,filecolor);
 			}
 				
             }
             else if(flag==(PARAM_i+PARAM_s))
             {
-                h_max= g_leave_len/(g_maxlen+15);
+                
                   if(name[0] != '.')
             {
-				printf("%ld ",buf.st_ino);
+				printf("%7ld ",buf.st_ino);
                 printf("%ld ",buf.st_blocks/2);
 				ls_l(buf,name,filecolor);
 			}
             }
             else if(flag==(PARAM_i+PARAM_a+PARAM_s))
             {
-                h_max= g_leave_len/(g_maxlen+15);
-                printf("%ld ",buf.st_ino);
+                
+                printf("%7ld ",buf.st_ino);
 				ls_s(name,filecolor);
             }
             else if(flag==(PARAM_l+PARAM_s+PARAM_a))
             {
-                h_max= g_leave_len/(g_maxlen+15);
-                printf("%ld ",buf.st_blocks/2);
+                
+                printf("%3ld ",buf.st_blocks/2);
 				ls_l(buf,name,filecolor);
             }
             else if(flag==(PARAM_i+PARAM_s+PARAM_l))
             {   if(name[0]!='.')
               {
 
-                h_max= g_leave_len/(g_maxlen+15);
-                printf("%ld ",buf.st_ino);
-                 printf("%ld ",buf.st_blocks);
+               
+                printf("%7ld ",buf.st_ino);
+                 printf("%3ld ",buf.st_blocks);
 				ls_l(buf,name,filecolor);
               }
             }
             else if(flag==(PARAM_i+PARAM_a+PARAM_l))
             {
-                h_max= g_leave_len/(g_maxlen+15);
-                printf("%ld ",buf.st_ino);
+               
+                printf("%7ld ",buf.st_ino);
 				ls_l(buf,name,filecolor);
             }
             else if(flag==(PARAM_i+PARAM_a+PARAM_l+PARAM_s))
             {
-                h_max= g_leave_len/(g_maxlen+15);
-                printf("%ld  ",buf.st_ino);
-			printf("%ld  ",buf.st_blocks/2);
+                
+                printf("%7ld  ",buf.st_ino);
+			printf("%3ld  ",buf.st_blocks/2);
 				ls_l(buf,name,filecolor);
             }
             
@@ -709,9 +706,9 @@ void display_dir(int flag,char*path)
            {
                for(int i=0;i<cnt;i++)
                 {
-                    if(stat(filename[i],&buf)==-1)
+                    if(lstat(filename[i],&buf)==-1)
                      {
-                         my_error("stat",__LINE__);
+                         my_error("lstat",__LINE__);
                      }
                     total=total+buf.st_blocks/2; //？？？
                 }
