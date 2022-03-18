@@ -109,6 +109,10 @@ int main(int argc,char*argv[])
                          }
 
                          printf("%s\n",path);
+                         if(chdir(path)==-1)
+                          {
+                            my_error("chdir",__LINE__);
+                          }
                         display_dir(flag,path);
                     }
 
@@ -471,15 +475,7 @@ void display_file(int flag,char *filename)
            }
             name[j]='\0'; //别漏掉'\0';
            
-           for(int i=0;i<=h;i++)
-             {
-               lujin[i]=filename[i];
-             }
-             
-             if(chdir(lujin)==-1)
-               {
-                 my_error("chdir",__LINE__);                     //很关键对于命令有路径时，需要切换到当前目录下
-               }
+          
 
                    //判断颜色
                  if(lstat(filename,&buf)==-1)
