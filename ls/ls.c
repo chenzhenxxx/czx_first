@@ -9,6 +9,7 @@
 #include<time.h>  //转换时间
 #include<unistd.h>
 #include<dirent.h>
+#include<errno.h>
 #define PARAM_NONE 0   //通过二进制 | 来标记flag
 #define PARAM_a 1
 #define PARAM_l 2
@@ -240,7 +241,8 @@ void ls_l(struct stat buf,char *name,int color)
           gid=getgrgid(buf.st_uid);
           if(uid==NULL||gid==NULL)
            {
-               my_error("can't get id", __LINE__); // __LINE__正在编译的行号
+               printf("can't get id");
+               return ; // __LINE__正在编译的行号
            }
           printf("%-8s  ",uid->pw_name);
           printf("%-8s",gid->gr_name);
@@ -260,7 +262,6 @@ void ls_l(struct stat buf,char *name,int color)
 
 void ls_i(char *name,int color)
 {    struct stat buf;
-     printf("%s\n",name);
     if(lstat(name,&buf)==-1)
     {
         my_error("lstat",__LINE__);
@@ -300,7 +301,6 @@ void ls_s(char * name,int color)
     }
     int j=0,len=strlen(name);
        char colorname[NAME_MAX+1];
-       
        g_leave_len-=(g_maxlen+12);
        if(g_leave_len<=g_maxlen)
        {
@@ -308,7 +308,7 @@ void ls_s(char * name,int color)
           g_leave_len=MAXROWLEN;
           h=0;
        }
-       printf("%3ld",buf.st_blocks/2);
+       printf("%3d",buf.st_blocks/2);
        sprintf(colorname,"\033[%dm%s\033[0m",color,name);
        printf(" %-s",colorname);
        h++;
@@ -328,7 +328,7 @@ void ls_s(char * name,int color)
        }
        len=g_maxlen-len+j/3;
         
-       for(int i=0;i<len+2;i++)
+       for(int i=0;i<len+1;i++)
 		   printf(" ");
         }
 }
@@ -342,8 +342,19 @@ int     i,count = 0;
 struct stat buf;
 char name_dir[10000];
 if(chdir(name)<0)                              //将输入的目录改为当前目录，下面操作的前提
-{
-  my_error("chdir",__LINE__);
+{ 
+    if(lstat(name,&buf)==-1)
+          {  if(errno==13)
+              { printf("Permission denied\n");
+                return;
+              }
+              else if(strncmp(name,"/proc",4)==0)
+                 { printf("this is a /proc file\n");
+                   return;
+                 }
+            else 
+             my_error("lstat",__LINE__);
+          }
 }
 if(getcwd(name_dir,10000)<0){
   my_error("getcwd",__LINE__);                   //获取当前目录的绝对路径（重要，下面的打开目录的操作需要这个路径，否则需要手动添加）
@@ -354,6 +365,8 @@ if(getcwd(name_dir,10000)<0){
 if(dir==NULL){
   my_error("opendir",__LINE__);
 }
+
+  g_maxlen=0;
 while((ptr = readdir(dir))!=NULL){
   if(g_maxlen<strlen(ptr->d_name))
          g_maxlen = strlen(ptr->d_name);
@@ -390,7 +403,15 @@ for(i=0;i<count;i++)
       for(i=0;i<count;i++){
  
           if(lstat(filenames[i],&buf)==-1)
-          {
+          {  if(errno==13)
+              { printf("Permission denied\n");
+                return;
+              }
+              else if(strncmp(filenames[i],"/proc",4)==0)
+                 { printf("this is a /proc file\n");
+                   return;
+                 }
+            else 
              my_error("lstat",__LINE__);
           }
           if(strcmp(filenames[i],"..")==0)
@@ -398,6 +419,8 @@ for(i=0;i<count;i++)
           if(filenames[i][0]=='.')
           continue;
           if(S_ISDIR(buf.st_mode)){
+            h=0;
+            g_leave_len=MAXROWLEN;
             ls_R(filenames[i],flag);
           }
           else if(!S_ISDIR(buf.st_mode))
@@ -479,7 +502,9 @@ void display_file(int flag,char *filename)
 
                    //判断颜色
                  if(lstat(filename,&buf)==-1)
-                   {   printf("%s\n",filename);
+                   {    if(errno==13)
+                        return;
+                        else
                        my_error("lstat",__LINE__);
                    }
 
@@ -552,8 +577,10 @@ void display_file(int flag,char *filename)
             }
             else if(flag==(PARAM_i+PARAM_s))
             {   if(name[0]!='.')
-              { printf("%7ld ",buf.st_ino);
-				        ls_s(name,filecolor);
+              { 
+                h_max=g_leave_len/(g_maxlen+15);
+                printf("%7ld ",buf.st_ino);
+                ls_s(name,filecolor);
               }
             }
             else if(flag==(PARAM_l+PARAM_s))
@@ -574,24 +601,25 @@ void display_file(int flag,char *filename)
                
                 if(name[0] != '.')
             {
-				printf("%7ld ",buf.st_ino);
-				ls_l(buf,name,filecolor);
-			}
+			      	printf("%7ld ",buf.st_ino);
+				     ls_l(buf,name,filecolor);
+			      }
 				
             }
-            else if(flag==(PARAM_i+PARAM_s))
+            else if(flag==(PARAM_i+PARAM_s+PARAM_l))
             {
                 
                   if(name[0] != '.')
-            {
-				printf("%7ld ",buf.st_ino);
+              {
+                h_max=g_leave_len/(g_maxlen+15); 
+				        printf("%7ld ",buf.st_ino);
                 printf("%ld ",buf.st_blocks/2);
-				ls_l(buf,name,filecolor);
-			}
+				       ls_l(buf,name,filecolor);
+			         }
             }
             else if(flag==(PARAM_i+PARAM_a+PARAM_s))
             {
-                
+                h_max= g_leave_len/(g_maxlen+15);
                 printf("%7ld ",buf.st_ino);
 				ls_s(name,filecolor);
             }
