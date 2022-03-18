@@ -89,12 +89,16 @@ int main(int argc,char*argv[])
                }
               
               else
-               {  if(lstat(path,&buf)==-1)
+               {  
+
+                   if(lstat(argv[m],&buf)==-1)
                     {
                         my_error("lstat",__LINE__);
                     }
+
                    if(S_ISDIR(buf.st_mode))  //是不是目录
-                    {   if(path[strlen(argv[m])-1]!='/')
+                    {  strcpy(path,argv[m]);
+                      if(path[strlen(argv[m])-1]!='/')
                          {
                            path[strlen(argv[m])]='/';
                            path[strlen(argv[m])+1]='\0';
@@ -103,7 +107,8 @@ int main(int argc,char*argv[])
                          {
                              path[strlen(argv[m])]='\0';
                          }
-                        strcpy(path,argv[m]);
+
+                         printf("%s\n",path);
                         display_dir(flag,path);
                     }
 
@@ -113,6 +118,7 @@ int main(int argc,char*argv[])
                         display_file(flag,path);
 
                     } 
+                    printf("\n");
                }
          }
          return 0;
@@ -250,6 +256,7 @@ void ls_l(struct stat buf,char *name,int color)
 
 void ls_i(char *name,int color)
 {    struct stat buf;
+     printf("%s\n",name);
     if(lstat(name,&buf)==-1)
     {
         my_error("lstat",__LINE__);
@@ -447,8 +454,9 @@ void time_quicksort(long filetime[],char filename[256][PATH_MAX+1],int begin,int
 //  
 void display_file(int flag,char *filename)
 {
-          int i,j=0,filecolor=37;//白色
+          int i,j=0,h=0,filecolor=37;//白色
           char name[PATH_MAX+1];
+          char lujin[PATH_MAX+1];
           struct stat buf;
         memset(name,'\0',PATH_MAX+1);
           for(i=0;i<strlen(filename);i++)
@@ -456,13 +464,22 @@ void display_file(int flag,char *filename)
                if(filename[i]=='/')
                 {
                      j=0;
+                     h=i;
                      continue;
                 }
                 name[j++]=filename[i];
            }
             name[j]='\0'; //别漏掉'\0';
            
-           //printf("hh=%s\n",name);
+           for(int i=0;i<=h;i++)
+             {
+               lujin[i]=filename[i];
+             }
+             
+             if(chdir(lujin)==-1)
+               {
+                 my_error("chdir",__LINE__);                     //很关键对于命令有路径时，需要切换到当前目录下
+               }
 
                    //判断颜色
                  if(lstat(filename,&buf)==-1)
@@ -650,8 +667,6 @@ void display_dir(int flag,char*path)
      if(cnt>256)  //过多文件
       printf("%d :too many files under this dir",__LINE__);
       
-      
-      
       dir=opendir(path);
      for(int i=0;i<cnt;i++)
      {
@@ -664,7 +679,7 @@ void display_dir(int flag,char*path)
          filename[i][strlen(path)]='\0';
          strcat(filename[i],ptr->d_name);
          filename[i][strlen(path)+strlen(ptr->d_name)]='\0';
-       // printf("%d %s\n",i,filename[i]);
+       //printf("%d %s\n",i,filename[i]);
          
 
      }
@@ -716,9 +731,9 @@ void display_dir(int flag,char*path)
           else
            {
                 for(int i=0;i<cnt;i++)
-                {
+                {   
                     if(lstat(filename[i],&buf)==-1)
-                     {
+                     {   
                          my_error("lstat",__LINE__);
                      }
                      if(filename[i][2]!='.')
@@ -755,8 +770,7 @@ void display_dir(int flag,char*path)
                       else
                        {   
                            for(int i=0;i<cnt;i++)
-                            {
-                              
+                            {   
                             display_file(flag,filename[i]);
                             }
                        }
