@@ -479,7 +479,7 @@ void display_file(int flag,char *filename)
 
                    //判断颜色
                  if(lstat(filename,&buf)==-1)
-                   {
+                   {   printf("%s\n",filename);
                        my_error("lstat",__LINE__);
                    }
 
