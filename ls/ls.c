@@ -346,6 +346,7 @@ if(chdir(name)<0)                              //将输入的目录改为当前�
     if(lstat(name,&buf)==-1)
           {  if(errno==13)
               { printf("Permission denied\n");
+                errno=0;
                 return;
               }
               else if(strncmp(name,"/proc",4)==0)
@@ -361,7 +362,7 @@ if(getcwd(name_dir,10000)<0){
 }
  printf("%s:\n",name_dir);
  
- dir = opendir(name_dir);     //用新获得的路径打开目录
+ dir = opendir(name_dir);     
 if(dir==NULL){
   my_error("opendir",__LINE__);
 }
@@ -375,7 +376,7 @@ while((ptr = readdir(dir))!=NULL){
 closedir(dir);
  
 //动态数组(用静态数组会爆)
-  char**filenames =(char**)malloc(count*sizeof(char*));    //要进行初始化 
+  char**filenames =(char**)malloc(count*sizeof(char*)); 
   memset(filenames,0,sizeof(char*)*count);
  
 for(i=0;i<count;i++){
@@ -398,13 +399,14 @@ for(i=0;i<count;i++){
 for(i=0;i<count;i++)
    display_file(flag,filenames[i]);
   printf("\n");
-                          //递归实现核心部分
+                          
  
       for(i=0;i<count;i++){
  
           if(lstat(filenames[i],&buf)==-1)
           {  if(errno==13)
               { printf("Permission denied\n");
+                errno=0;
                 return;
               }
               else if(strncmp(filenames[i],"/proc",4)==0)
