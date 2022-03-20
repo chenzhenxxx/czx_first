@@ -9,7 +9,7 @@
 #include<time.h>  //转换时间
 #include<unistd.h>
 #include<dirent.h>
-#include<errno.h>
+#include<errno.h>  //错误的代码会传到errno中
 #define PARAM_NONE 0   //通过二进制 | 来标记flag
 #define PARAM_a 1
 #define PARAM_l 2
@@ -20,8 +20,8 @@
 #define PARAM_s 64
 #define MAXROWLEN  155 
 int h=0,h_max=2;
-int g_maxlen;  
-int g_leave_len = MAXROWLEN;
+int g_maxlen;  //这个目录下最长的文件名
+int g_leave_len = MAXROWLEN;  //本行剩余长度
 void my_error(const char * err_string,int line);
 void  display_single(char *name ,int color);
 void ls_l(struct stat buf,char *name,int color);
@@ -129,21 +129,21 @@ int main(int argc,char*argv[])
          return 0;
 }
 
-void my_error(const char * err_string,int line)
+void my_error(const char * err_string,int line)   //报错函数
 {
     fprintf(stderr,"line:%d ",line);
     perror(err_string);
     exit(1);
 }
 
-int cmp(const void *_a,const void *_b)
+int cmp(const void *_a,const void *_b)  
 {
     char *a=(char*)_a;
     char *b=(char*)_b;
     return strcmp(a,b);
 }
 
- void display_single(char *name,int filecolor)
+ void display_single(char *name,int filecolor)   //打印文件名
 {
 	char colorname[NAME_MAX + 30];
 	int i,len,j = 0;
@@ -234,7 +234,7 @@ void ls_l(struct stat buf,char *name,int color)
           printf("x");
            else
           printf("-");
-    //链接数
+         //链接数
           printf("%4lu ",buf.st_nlink);
           //uid和gid
           uid=getpwuid(buf.st_uid);
@@ -333,7 +333,7 @@ void ls_s(char * name,int color)
         }
 }
 
-void ls_R(char*name,int flag)
+void ls_R(char*name,int flag)  
  
 {
 DIR * dir;
@@ -393,7 +393,7 @@ for(i=0;i<count;i++){
       my_error("readdir",__LINE__);
     }
  
-    strcat(filenames[i],ptr->d_name);    //这里要注意用之前的初始化
+    strcat(filenames[i],ptr->d_name);   
 }
 for(i=0;i<count;i++)
    display_file(flag,filenames[i]);
@@ -436,10 +436,10 @@ for(i=0;i<count;i++)
       free(filenames[i]);
     }
     free(filenames);
-    closedir(dir);          //在函数开始时打开，结束时关闭
+    closedir(dir);          
     }
 
-void time_quicksort(long filetime[],char filename[256][PATH_MAX+1],int begin,int end)
+void time_quicksort(long filetime[],char filename[256][PATH_MAX+1],int begin,int end)   //大点的目录没有实现？？
 {  char tmpname[PATH_MAX+1];
    if(begin>=end)
    return ;
