@@ -1,3 +1,7 @@
+//几个问题：
+// ls -R 时我需要进入到root下才能遍历完根目录
+// my_ls -rR和ls的有些区别 
+// 自己写的timeqort函数对小一点文件可以排序，但是大一点就卡住了。用插入排序直接排没事。
 #include<stdio.h>
 #include <linux/limits.h> //包含PATH_MAX =260
 #include<string.h>
@@ -9,7 +13,7 @@
 #include<time.h>  //转换时间
 #include<unistd.h>
 #include<dirent.h>
-#include<errno.h>  //错误的代码会传到errno中
+#include<errno.h>
 #define PARAM_NONE 0   //通过二进制 | 来标记flag
 #define PARAM_a 1
 #define PARAM_l 2
@@ -19,10 +23,11 @@
 #define PARAM_i 32
 #define PARAM_s 64
 #define MAXROWLEN  155 
-int h=0,h_max=2;
-int g_maxlen;  //这个目录下最长的文件名
-int g_leave_len = MAXROWLEN;  //本行剩余长度
-void my_error(const char * err_string,int line);
+int h=0,h_max=2; //h_max一行最多多少个文件名
+int flag1=0;  
+int g_maxlen;    //最长文件名长度
+int g_leave_len = MAXROWLEN;  //本行剩下多少空间
+void my_error(const char * err_string,int line);    
 void  display_single(char *name ,int color);
 void ls_l(struct stat buf,char *name,int color);
 void ls_i(char *name,int color);
@@ -101,7 +106,7 @@ int main(int argc,char*argv[])
                     {  strcpy(path,argv[m]);
                       if(path[strlen(argv[m])-1]!='/')
                          {
-                           path[strlen(argv[m])]='/';
+                           path[strlen(argv[m])]='/';  //目录以/结尾
                            path[strlen(argv[m])+1]='\0';
                          }
                          else
@@ -110,7 +115,7 @@ int main(int argc,char*argv[])
                          }
 
                          printf("%s\n",path);
-                         if(chdir(path)==-1)
+                         if(chdir(path)==-1)   //更换到dath目录下
                           {
                             my_error("chdir",__LINE__);
                           }
@@ -129,21 +134,21 @@ int main(int argc,char*argv[])
          return 0;
 }
 
-void my_error(const char * err_string,int line)   //报错函数
+void my_error(const char * err_string,int line)
 {
     fprintf(stderr,"line:%d ",line);
     perror(err_string);
     exit(1);
 }
 
-int cmp(const void *_a,const void *_b)  
+int cmp(const void *_a,const void *_b)
 {
     char *a=(char*)_a;
     char *b=(char*)_b;
     return strcmp(a,b);
 }
 
- void display_single(char *name,int filecolor)   //打印文件名
+ void display_single(char *name,int filecolor)
 {
 	char colorname[NAME_MAX + 30];
 	int i,len,j = 0;
@@ -234,7 +239,7 @@ void ls_l(struct stat buf,char *name,int color)
           printf("x");
            else
           printf("-");
-         //链接数
+    //链接数
           printf("%4lu ",buf.st_nlink);
           //uid和gid
           uid=getpwuid(buf.st_uid);
@@ -333,7 +338,7 @@ void ls_s(char * name,int color)
         }
 }
 
-void ls_R(char*name,int flag)  
+void ls_R(char*name,int flag)
  
 {
 DIR * dir;
@@ -346,7 +351,6 @@ if(chdir(name)<0)                              //将输入的目录改为当前�
     if(lstat(name,&buf)==-1)
           {  if(errno==13)
               { printf("Permission denied\n");
-                errno=0;
                 return;
               }
               else if(strncmp(name,"/proc",4)==0)
@@ -362,7 +366,7 @@ if(getcwd(name_dir,10000)<0){
 }
  printf("%s:\n",name_dir);
  
- dir = opendir(name_dir);     
+ dir = opendir(name_dir);     //用新获得的路径打开目录
 if(dir==NULL){
   my_error("opendir",__LINE__);
 }
@@ -376,7 +380,7 @@ while((ptr = readdir(dir))!=NULL){
 closedir(dir);
  
 //动态数组(用静态数组会爆)
-  char**filenames =(char**)malloc(count*sizeof(char*)); 
+  char**filenames =(char**)malloc(count*sizeof(char*));  
   memset(filenames,0,sizeof(char*)*count);
  
 for(i=0;i<count;i++){
@@ -394,19 +398,26 @@ for(i=0;i<count;i++){
       my_error("readdir",__LINE__);
     }
  
-    strcat(filenames[i],ptr->d_name);   
+    strcat(filenames[i],ptr->d_name);    
 }
+if(flag&PARAM_r)
+{
+flag-=PARAM_r;
+ flag1=1;
+}
+ if(flag1==0)   //没有r
+ {
 for(i=0;i<count;i++)
    display_file(flag,filenames[i]);
-  printf("\n");
-                          
+   
+   printf("\n");
+                          //递归实现核心部分
  
       for(i=0;i<count;i++){
  
           if(lstat(filenames[i],&buf)==-1)
           {  if(errno==13)
               { printf("Permission denied\n");
-                errno=0;
                 return;
               }
               else if(strncmp(filenames[i],"/proc",4)==0)
@@ -438,10 +449,58 @@ for(i=0;i<count;i++)
       free(filenames[i]);
     }
     free(filenames);
-    closedir(dir);          
+    closedir(dir); 
+  }
+  else  //有r
+     {
+       for(i=count-1;i>=0;i--)
+   display_file(flag,filenames[i]);
+   
+   printf("\n");
+                          //递归实现核心部分
+ 
+      for(i=count-1;i>=0;i--){
+ 
+          if(lstat(filenames[i],&buf)==-1)
+          {  if(errno==13)
+              { printf("Permission denied\n");
+                return;
+              }
+              else if(strncmp(filenames[i],"/proc",4)==0)
+                 { printf("this is a /proc file\n");
+                   return;
+                 }
+            else 
+             my_error("lstat",__LINE__);
+          }
+          if(strcmp(filenames[i],"..")==0)
+          continue;
+          if(filenames[i][0]=='.')
+          continue;
+          if(S_ISDIR(buf.st_mode)){
+            h=0;
+            g_leave_len=MAXROWLEN;
+            ls_R(filenames[i],flag);
+          }
+          else if(!S_ISDIR(buf.st_mode))
+           {
+             continue;
+           }
+               chdir("../");          //处理完一个目录后返回上一层
+        }
+ 
+    
+    for(i=0;i<count;i++)
+    {
+      free(filenames[i]);
     }
+    free(filenames);
+    closedir(dir); 
+     }
+           
+}
 
-void time_quicksort(long filetime[],char filename[256][PATH_MAX+1],int begin,int end)   //大点的目录没有实现？？
+void time_quicksort(long filetime[],char filename[256][PATH_MAX+1],int begin,int end)
 {  char tmpname[PATH_MAX+1];
    if(begin>=end)
    return ;
@@ -580,7 +639,7 @@ void display_file(int flag,char *filename)
             else if(flag==(PARAM_i+PARAM_s))
             {   if(name[0]!='.')
               { 
-                h_max=g_leave_len/(g_maxlen+15);
+                h_max=g_leave_len/(g_maxlen+15);   //貌似是一个公式
                 printf("%7ld ",buf.st_ino);
                 ls_s(name,filecolor);
               }
@@ -723,7 +782,7 @@ void display_dir(int flag,char*path)
                    filetime[i]=buf.st_mtime;
               }
 
-                for(int i=0;i<cnt;i++)
+              for(int i=0;i<cnt;i++)
                    for(int j=i;j<cnt;j++)
                      if(filetime[j]>filetime[i])
                       {
@@ -731,7 +790,8 @@ void display_dir(int flag,char*path)
                           t=filetime[i];
                           filetime[i]=filetime[j];
                           filetime[j]=t;
-                      }
+                     }
+                     //time_quicksort(filetime,filename,0,cnt-1);
             
         }
         else   //用文件名首字母排序
@@ -742,7 +802,7 @@ void display_dir(int flag,char*path)
            //for(int i=0;i<cnt;i++)
             //printf("%d %s\n",i,filename[i]);
           int total=0;
-         //计算总量
+         //计算总量??
           if(flag&PARAM_a)   //包括隐藏文件
            {
                for(int i=0;i<cnt;i++)
@@ -774,13 +834,13 @@ void display_dir(int flag,char*path)
 
 
             if(flag&PARAM_r)
-              {    flag-=PARAM_r;
-                  if(flag&PARAM_R)  //??
+              {    
+                  if(flag&PARAM_R) 
                     {       flag-=PARAM_R;
                             ls_R(path,flag);
                     }
                     else
-                     {    
+                     {    flag-=PARAM_r;
                          for(int i=cnt-1;i>=0;i--)
                            {  
                            display_file(flag,filename[i]);
