@@ -88,7 +88,9 @@
         "locale_t.h": "c",
         "linux_c.h": "c",
         "string.h": "c",
-        "ctype.h": "c"
+        "ctype.h": "c",
+        "types.h": "c",
+        "time.h": "c"
     },
     "code-runner.executorMap": {
         "javascript": "node",

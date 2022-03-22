@@ -3,7 +3,7 @@ main()
 {
     char *p[7];
     char b[11][20];
-    int i,n,flag=1;
+    int i,n,j,flag=1;
     char a[7][20]={"Sunday","Monday","Tuesday","Wednesday","Thursday","Thursday","Friday","Saturday"};
     for(i=0;i<6;i++)
     p[i]=a[i];
