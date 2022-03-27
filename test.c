@@ -1,180 +1,436 @@
-#include "stdio.h"    
-#include "stdlib.h"   
+#include<stdio.h>
+#include<stdlib.h>
+#include<unistd.h>
+#include<string.h>
+#include<sys/types.h>
+#include<sys/wait.h>
+#include<sys/stat.h>
+#include<fcntl.h>
+#include<dirent.h>
 
-#include "math.h"  
-#include "time.h"
+#define normal  0   //一般的命令
+#define out_readirect   1   //输出重定向
+#define in_readdirect 2     //输入重定向
+#define have_pipe   3   //命令中有管道
 
-#define OK 1
-#define ERROR 0
-#define TRUE 1
-#define FALSE 0
-#define MAXSIZE 20 /* 存储空间初始分配量 */
+void print_prompt();    //打印提示符
+void get_input(char *);     //得到输入的命令
+void explain_input(char *, int *, char (*)[256]);  //对输入的命令进行解析
+void do_cmd(int, char (*)[256]);   //执行命令
+int find_command(char *);   //查找命令中的可执行程序
+char *msg;  //用于myshell提示信息的输出
 
-typedef int Status; 
 
-typedef int QElemType; /* QElemType类型根据实际情况而定，这里假设为int */
-
-typedef struct QNode	/* 结点结构 */
+int main(int argc, char **argv)
 {
-   QElemType data;
-   struct QNode *next;
-}QNode,*QueuePtr;
+    int i;
+    int argcount = 0;
+    char arglist[100][256];
+    char **arg = NULL;
+    char *buf = NULL;
 
-typedef struct			/* 队列的链表结构 */
+    buf = (char *)malloc(256);
+    if(buf == NULL)
+    {
+        perror("malloc failed");
+        exit(-1);
+    }
+
+    while(1)
+    {
+        memset(buf, 0, 256);    //将buf所指的空间清零
+        print_prompt();
+        get_input(buf);
+        if( strcmp(buf, "exit\n") == 0 || strcmp(buf, "logout\n") == 0)
+        {
+            break;
+        }
+        for(i = 0; i < 100; i++)
+        {
+            arglist[i][0] = '\0';
+        }
+        argcount = 0;
+        explain_input(buf, &argcount, arglist);
+        do_cmd(argcount, arglist);
+    }
+
+    if(buf != NULL)
+    {
+        free(buf);
+        buf = NULL;
+    }
+    exit(0);
+}
+
+void print_prompt()
 {
-   QueuePtr front,rear; /* 队头、队尾指针 */
-}LinkQueue;
+    msg = (char *)malloc(100);
+    getcwd(msg, 100);
+    printf("myshell@zxq:%s$ ", msg);
+    free(msg);
+}
 
-Status visit(QElemType c)
+//获取用户输入
+void get_input(char *buf)
 {
-	printf("%d ",c);
-	return OK;
+    int len = 0;
+    int ch;
+
+    ch = getchar();
+    while(len < 256 && ch != '\n')
+    {
+        buf[len++] = ch;
+        ch = getchar();
+    }
+
+    if(len == 256)
+    {
+        printf("command is too long\n");
+        exit(-1);
+    }
+    buf[len] = '\n';
+    len++;
+    buf[len] = '\0';
 }
 
-/* 构造一个空队列Q */
-Status InitQueue(LinkQueue *Q)
-{ 
-	Q->front=Q->rear=(QueuePtr)malloc(sizeof(QNode));
-	if(!Q->front)
-		exit(0);
-	Q->front->next=NULL;
-	return OK;
-}
-
-/* 销毁队列Q */
-Status DestroyQueue(LinkQueue *Q)
+//解析buf中的命令，将结果存入arglist中，命令以回车符号\n结束
+void explain_input(char *buf, int *argcount, char (*arglist)[256])
 {
-	while(Q->front)
-	{
-		 Q->rear=Q->front->next;
-		 free(Q->front);
-		 Q->front=Q->rear;
-	}
-	return OK;
+    char *p = buf;
+    char *q = buf;
+    int number = 0;
+    int i;
+    while(1)
+    {
+        if(p[0] == '\n')
+        {
+            break;
+        }
+
+        if(p[0] == ' ')
+        {
+            p++;
+        }
+        else 
+        {
+            q = p;
+            number = 0;
+            while((q[0] != ' ') && (q[0] != '\n'))
+            {
+                if(q[0] == 92)
+                {
+                    q[0] = ' ';
+                    q[1] = q[2];
+                    for(i = 2; ; i++)
+                    {
+                        q[i] = q[i+1];
+                        if((q[i] == ' ') || (q[i] == '\n'))
+                        break;
+                    }
+                }
+                number++;
+                q++;
+            }
+            strncpy(arglist[*argcount], p, number + 1);
+            arglist[*argcount][number] = '\0';
+            *argcount = *argcount + 1;
+            p = q;
+        }
+    }
 }
 
-/* 将Q清为空队列 */
-Status ClearQueue(LinkQueue *Q)
+
+void do_cmd(int argcount, char (*arglist)[256])
 {
-	QueuePtr p,q;
-	Q->rear=Q->front;
-	p=Q->front->next;
-	Q->front->next=NULL;
-	while(p)
-	{
-		 q=p;
-		 p=p->next;
-		 free(q);
-	}
-	return OK;
+    int flag = 0;
+    int how = 0;    //用于只是命令中是否含有> 、 < 、 |
+    int background = 0;     //标识命令中是否有后台运行的标示符
+    int status;
+    int i;
+    int fd;
+    char *arg[argcount + 1];
+    char *argnext[argcount + 1];
+    pid_t pid;
+    char *file;
+    //将命令取出
+    for(i = 0; i < argcount; i++)
+    {
+        arg[i] = (char *)arglist[i];
+    }
+    arg[argcount] = NULL;
+
+    //查看命令行是否有后台运行符
+    for(i = 0; i < argcount; i++)
+    {
+        if(strncmp(arg[i], "&", 1) == 0)
+        {
+            if(i == argcount - 1)
+            {
+                background = 1;
+                arg[argcount - 1] = NULL;
+                break;
+            }
+            else
+            {
+                printf("wrong command\n");
+                return ;
+            }
+        }
+    }
+
+    for(i = 0; arg[i] != NULL; i++)
+    {
+        if(strcmp(arg[i], ">") == 0)
+        {
+            flag++;
+            how = out_readirect;
+            if(arg[i + 1] == NULL)
+            {
+                flag++;
+            }
+        }
+        if(strcmp(arg[i], "<") == 0)
+        {
+            flag++;
+            how = in_readdirect;
+            if(i == 0)
+            {
+                flag++;
+            }
+        }
+        if(strcmp(arg[i], "|") == 0)
+        {
+            flag++;
+            how = have_pipe;
+            if(arg[i+1] == NULL)
+            {
+                flag++;
+            }
+            if(i == 0)
+            {
+                flag++;
+            }
+        }
+    }
+    //flag大于1,说明命令中含有多个> < |符号，本程序是不支持这样的命令的，或命令格式不对
+    if(flag > 1)
+    {
+        printf("wrong command\n");
+        return ;
+    }
+
+    if(how == out_readirect)
+    {
+        //命令只含有一个输出重定向符号
+        for(i = 0; arg[i] != NULL; i++)
+        {
+            if(strcmp(arg[i], ">") == 0)
+            {
+                file = arg[i+1];
+                arg[i] = NULL;
+            }
+        }
+    }
+
+    if(how == in_readdirect)
+    {
+        //命令只含有一个输入重定向
+        for(i = 0; arg[i] != NULL; i++)
+        {
+            if(strcmp(arg[i], "<") == 0)
+            {
+                file = arg[i + 1];
+                arg[i] == NULL;
+            }
+        }
+    }
+
+    if(how == have_pipe)
+    {
+        //命令只有一个管道符号，把管道符后面的部分存入argnext中，管道后面的部分是一个可执行的shell命令
+        for(i = 0; arg[i] != NULL; i++)
+        {
+            if(strcmp(arg[i], "|") == 0)
+            {
+                arg[i] = NULL;
+                int j;
+                for(j = i + 1; arg[j] != NULL; j++)
+                {
+                    argnext[j-i-1] = arg[j];
+                }
+                argnext[j-i-1] = arg[j];
+                break;
+            }
+        }
+    }
+
+    if((arg[0] != NULL) && (strcmp(arg[0], "cd") == 0))
+    {
+        if(arg[1] == NULL)
+        {
+            return ;
+        }
+        if(strcmp(arg[1], "~") == 0)
+        {
+            strcpy(arg[1], "/home/zhuxinquan/");
+        }
+        if(chdir(arg[1]) ==  -1)
+        {
+            perror("cd");
+        }
+        return ;
+    }
+
+    if((pid = fork()) < 0)
+    {
+        printf("fork error\n");
+        return ;
+    }
+
+    switch(how)
+    {
+        case 0:
+        //pid为0说明是子进程，在子进程中执行输入的命令
+        //输入的命令中不含> < |
+        if(pid == 0)
+        {
+            if(!(find_command(arg[0])))
+            {
+                printf("%s : command not found\n", arg[0]);
+                exit(0);
+            }
+            execvp(arg[0], arg);
+            exit(0);
+        }
+        break;
+
+        case 1:
+        //输入的命令中含有输出重定向符
+        if(pid == 0)
+        {
+            if( !(find_command(arg[0])) )
+            {
+                printf("%s : command not found\n", arg[0]);
+                exit(0);
+            }
+            fd = open(file, O_RDWR|O_CREAT|O_TRUNC, 0644);
+            dup2(fd, 1);
+            execvp(arg[0], arg);
+            exit(0);
+        }
+        break;
+
+        case 2:
+        //输入的命令中含有输入重定向<
+        if(pid == 0)
+        {
+            if( !(find_command (arg[0])) )
+            {
+                printf("%s : command not found\n", arg[0]);
+                exit(0);
+            }
+            fd = open(file, O_RDONLY);
+            dup2(fd, 0);
+            execvp(arg[0], arg);
+            exit(0);
+        }
+        break;
+
+        case 3:
+        //输入的命令中含有管道符|
+        if(pid == 0)
+        {
+            int pid2;
+            int status2;
+            int fd2;
+
+            if( (pid2 = fork()) < 0 )
+            {
+                printf("fork2 error\n");
+                return ;
+            }
+            else if(pid2 == 0)
+            {
+                if( !(find_command(arg[0])) )
+                {
+                    printf("%s : command not found\n", arg[0]);
+                    exit(0);
+                }
+                fd2 = open("/tmp/youdonotknowfile", O_WRONLY|O_CREAT|O_TRUNC, 0644);
+                dup2(fd2, 1);
+                execvp(arg[0], arg);
+                exit(0);
+            }
+            if(waitpid(pid2, &status2, 0) == -1)
+            {
+                printf("wait for child process error\n");
+            }
+            if( !(find_command(argnext[0])) )
+            {
+                printf("%s : command not found\n", argnext[0]);
+                exit(0);
+            }
+            fd2 = open("/tmp/youdonotknowfile", O_RDONLY);
+            dup2(fd2, 0);
+            execvp (argnext[0], argnext);
+
+            if( remove("/tmp/youdonotknowfile") )
+            {
+                printf("remove error\n");
+            }
+            exit(0);
+        }
+        break;
+
+        default:
+        break;
+    }
+
+    //若命令中有&，表示后台执行，父进程直接返回，不等待子进程结束
+    if(background == 1)
+    {
+        printf("process id %d \n", pid);
+        return ;
+    }
+
+    //父进程等待子进程结束
+    if(waitpid(pid, &status, 0) == -1)
+    {
+        printf("wait for child process error\n");
+    }
 }
 
-/* 若Q为空队列,则返回TRUE,否则返回FALSE */
-Status QueueEmpty(LinkQueue Q)
-{ 
-	if(Q.front==Q.rear)
-		return TRUE;
-	else
-		return FALSE;
-}
-
-/* 求队列的长度 */
-int QueueLength(LinkQueue Q)
-{ 
-	int i=0;
-	QueuePtr p;
-	p=Q.front;
-	while(Q.rear!=p)
-	{
-		 i++;
-		 p=p->next;
-	}
-	return i;
-}
-
-/* 若队列不空,则用e返回Q的队头元素,并返回OK,否则返回ERROR */
-Status GetHead(LinkQueue Q,QElemType *e)
-{ 
-	QueuePtr p;
-	if(Q.front==Q.rear)
-		return ERROR;
-	p=Q.front->next;
-	*e=p->data;
-	return OK;
-}
-
-
-/* 插入元素e为Q的新的队尾元素 */
-Status EnQueue(LinkQueue *Q,QElemType e)
-{ 
-	QueuePtr s=(QueuePtr)malloc(sizeof(QNode));
-	if(!s) /* 存储分配失败 */
-		exit(0);
-	s->data=e;
-	s->next=NULL;
-	Q->rear->next=s;	/* 把拥有元素e的新结点s赋值给原队尾结点的后继，见图中① */
-	Q->rear=s;		/* 把当前的s设置为队尾结点，rear指向s，见图中② */
-	return OK;
-}
-
-/* 若队列不空,删除Q的队头元素,用e返回其值,并返回OK,否则返回ERROR */
-Status DeQueue(LinkQueue *Q,QElemType *e)
+//查找命令中的可执行程序
+int find_command(char *command)
 {
-	QueuePtr p;
-	if(Q->front==Q->rear)
-		return ERROR;
-	p=Q->front->next;		/* 将欲删除的队头结点暂存给p，见图中① */
-	*e=p->data;				/* 将欲删除的队头结点的值赋值给e */
-	Q->front->next=p->next;/* 将原队头结点的后继p->next赋值给头结点后继，见图中② */
-	if(Q->rear==p)		/* 若队头就是队尾，则删除后将rear指向头结点，见图中③ */
-		Q->rear=Q->front;
-	free(p);
-	return OK;
-}
+    DIR *dp;
+    struct dirent *dirp;
+    char *path[] = {"./", "/bin", "/usr/bin", NULL};
 
-/* 从队头到队尾依次对队列Q中每个元素输出 */
-Status QueueTraverse(LinkQueue Q)
-{
-	QueuePtr p;
-	p=Q.front->next;
-	while(p)
-	{
-		 visit(p->data);
-		 p=p->next;
-	}
-	printf("\n");
-	return OK;
-}
+    //使当前目录下的程序可以运行，如命令“./fork”可以被正确解释和执行
+    if( strncmp(command, "./", 2) == 0 )
+    {
+        command = command + 2;
+    }
 
-int main()
-{
-	int i;
-	QElemType d;
-	LinkQueue q;
-	i=InitQueue(&q);
-	if(i)
-		printf("成功地构造了一个空队列!\n");
-	printf("是否空队列？%d(1:空 0:否)  ",QueueEmpty(q));
-	printf("队列的长度为%d\n",QueueLength(q));
-	EnQueue(&q,-5);
-	EnQueue(&q,5);
-	EnQueue(&q,10);
-	printf("插入3个元素(-5,5,10)后,队列的长度为%d\n",QueueLength(q));
-	printf("是否空队列？%d(1:空 0:否)  ",QueueEmpty(q));
-	printf("队列的元素依次为：");
-	QueueTraverse(q);
-	i=GetHead(q,&d);
-	if(i==OK)
-	 printf("队头元素是：%d\n",d);
-	DeQueue(&q,&d);
-	printf("删除了队头元素%d\n",d);
-	i=GetHead(q,&d);
-	if(i==OK)
-		printf("新的队头元素是：%d\n",d);
-	ClearQueue(&q);
-	printf("清空队列后,q.front=%u q.rear=%u q.front->next=%u\n",q.front,q.rear,q.front->next);
-	DestroyQueue(&q);
-	printf("销毁队列后,q.front=%u q.rear=%u\n",q.front, q.rear);
-	
-	return 0;
+    //分别在当前目录，/bin和/usr/bin目录查找要执行的程序
+    int i = 0;
+    while(path[i] != NULL)
+    {
+        if( (dp= opendir(path[i])) ==NULL )
+        {
+            printf("can not open /bin \n");
+        }
+        while( (dirp = readdir(dp)) != NULL )
+        {
+            if(strcmp(dirp->d_name, command) == 0)
+            {
+                closedir(dp);
+                return 1;
+            }
+        }
+        closedir(dp);
+        i++;
+    }
+    return 0;
 }
