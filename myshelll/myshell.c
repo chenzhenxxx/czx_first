@@ -15,13 +15,28 @@
 #define in_readirect 2  //<
 #define outt_readirect 3 //>>
 #define pipe 4    // |
-char *msg;
 void print_prompt()
 {
-    msg = (char *)malloc(100);
-    getcwd(msg, 100);
-    printf("myshell@chenzhenxin:%s$ ", msg);
-    free(msg);
+    char hostname[50];
+    gethostname(hostname,50);
+    struct passwd* username;
+    username=getpwuid(getuid());
+    char path[PATH_MAX+1];
+    getcwd(path,PATH_MAX+1);
+    int x;
+    char m;
+    x=geteuid();
+    if(x==0)
+    m='#';
+    else
+    m='$';
+    char colorhost[50];
+    char colorusername[PATH_MAX];
+    char  colorpath[PATH_MAX];
+    sprintf(colorhost,"\033[%dm%s\033[0m",32,hostname);
+    sprintf(colorusername,"\033[%dm%s\033[0m",33,username->pw_name);
+    sprintf(colorpath,"\033[%dm%s\033[0m",31,path);
+    printf("%s@%s:%s%c",colorhost,colorusername,colorpath,m);
 }
 void get_cmd(char *buf)
 {
@@ -99,7 +114,7 @@ DIR *dp;
        command = command + 2;
     }
 
-    //分别在当前目录，/bin和/usr/bin目录查找要执行的程序
+    
     int i = 0;
     while(path[i] != NULL)
     {
@@ -409,10 +424,12 @@ int main(int argc,char **argv)
      }
     while(1)
     { memset(buf,0,256);
-
-    print_prompt();
+      cnt=0;
+      fflush(stdin);
+      
+      print_prompt();
  
-    get_cmd(buf);
+      get_cmd(buf);
 
      if( strcmp(buf, "exit\n") == 0 || strcmp(buf, "logout\n") == 0)
      {
@@ -423,7 +440,6 @@ int main(int argc,char **argv)
       {
          arglist[i][0]='\0';
       }
-       cnt=0;
     explain_cmd(buf,&cnt,arglist);
  
     do_cmd(cnt,arglist);
