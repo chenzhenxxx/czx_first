@@ -10,11 +10,57 @@
 #include<signal.h>
 #include<string.h>
 #include<stdlib.h>
+#include"mshell.h"
 #define normal 0
 #define out_readirect 1 //>
 #define in_readirect 2  //<
 #define outt_readirect 3 //>>
 #define pipe 4    // |
+
+int main(int argc,char **argv)
+{   
+    char *buf=NULL;
+    int cnt=0;
+    char arglist[256][256];
+    char **arg=NULL;
+    buf=(char *)malloc(sizeof(char)*256);
+    if(buf==NULL)
+     {
+         printf("malloc failed\n");
+         exit(-1);
+     }
+    while(1)
+    { memset(buf,0,256);
+      cnt=0;
+      fflush(stdin);
+      
+      print_prompt();
+ 
+      get_cmd(buf);
+
+     if( strcmp(buf, "exit\n") == 0 || strcmp(buf, "logout\n") == 0)
+     {
+         break;
+     }
+     
+    for(int i=0;i<100;i++)
+      {
+         arglist[i][0]='\0';
+      }
+    explain_cmd(buf,&cnt,arglist);
+ 
+    do_cmd(cnt,arglist);
+   
+    }
+
+    if(buf!=NULL)
+    {
+        
+        free(buf);
+    }
+     exit(0);
+}
+
 void print_prompt()
 {
     char hostname[50];
@@ -38,6 +84,7 @@ void print_prompt()
     sprintf(colorpath,"\033[%dm%s\033[0m",31,path);
     printf("%s@%s:%s%c",colorhost,colorusername,colorpath,m);
 }
+
 void get_cmd(char *buf)
 {
       int len=0;
@@ -58,7 +105,8 @@ void get_cmd(char *buf)
         buf[len]='\0';
 
 }
-void explain_cmd(char *buf,int *cnt,char (*arglist)[256])
+
+void explain_cmd(char *buf,int *cnt,char arglist[256][256])
 {
     char *p = buf;
     char *q = buf;
@@ -102,6 +150,7 @@ void explain_cmd(char *buf,int *cnt,char (*arglist)[256])
         }
     }
 }
+
 int find_cmd(char *command)
 {
   
@@ -136,6 +185,7 @@ DIR *dp;
     return 0;
 
 }
+
 void do_cmd(int cnt,char (*arglist)[256])
 {   int i,flag=0,how=0,m=0;
     int background=0;
@@ -410,46 +460,3 @@ void do_cmd(int cnt,char (*arglist)[256])
             }
 }
 
-int main(int argc,char **argv)
-{   
-    char *buf=NULL;
-    int cnt=0;
-    char arglist[100][256];
-    char **arg=NULL;
-    buf=(char *)malloc(sizeof(char)*256);
-    if(buf==NULL)
-     {
-         printf("malloc failed\n");
-         exit(-1);
-     }
-    while(1)
-    { memset(buf,0,256);
-      cnt=0;
-      fflush(stdin);
-      
-      print_prompt();
- 
-      get_cmd(buf);
-
-     if( strcmp(buf, "exit\n") == 0 || strcmp(buf, "logout\n") == 0)
-     {
-         break;
-     }
-     
-    for(int i=0;i<100;i++)
-      {
-         arglist[i][0]='\0';
-      }
-    explain_cmd(buf,&cnt,arglist);
- 
-    do_cmd(cnt,arglist);
-   
-    }
-
-    if(buf!=NULL)
-    {
-        
-        free(buf);
-    }
-     exit(0);
-}
