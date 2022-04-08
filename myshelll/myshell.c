@@ -16,12 +16,11 @@
 #define in_readirect 2  //<
 #define outt_readirect 3 //>>
 #define pipe 4    // |
-
+int cnt=0;
 int main(int argc,char **argv)
 {   
     char *buf=NULL;
-    int cnt=0;
-    char arglist[256][256];
+    char *arglist[256];
     char **arg=NULL;
     buf=(char *)malloc(sizeof(char)*256);
     if(buf==NULL)
@@ -36,19 +35,14 @@ int main(int argc,char **argv)
       
       print_prompt();
  
-      get_cmd(buf);
-
-     if( strcmp(buf, "exit\n") == 0 || strcmp(buf, "logout\n") == 0)
+     
+      get_cmd(buf,arglist);
+     if( strcmp(arglist[0], "exit\n") == 0 || strcmp(arglist[0], "logout\n") == 0)
      {
          break;
      }
      
-    for(int i=0;i<100;i++)
-      {
-         arglist[i][0]='\0';
-      }
-    explain_cmd(buf,&cnt,arglist);
- 
+    
     do_cmd(cnt,arglist);
    
     }
@@ -85,83 +79,35 @@ void print_prompt()
     printf("%s@%s:%s%c",colorhost,colorusername,colorpath,m);
 }
 
-void get_cmd(char *buf)
-{
-      int len=0;
-      int  ch;
-      ch=getchar();
-      while(ch!='\n'&&len<256)
-       {
-           buf[len++]=ch;
-           ch=getchar();
-       }
-       if(len==256)
-        {
-            printf("command is too long\n");
-            exit(-1);
-        }
-        buf[len]='\n';
-        len++;
-        buf[len]='\0';
 
-}
 
-void explain_cmd(char *buf,int *cnt,char arglist[256][256])
-{
-    char *p = buf;
-    char *q = buf;
-    int number = 0;
-    int i;
-    while(1)
-    {
-        if(p[0] == '\n')
-        {
-            break;
-        }
-
-        if(p[0] == ' ')
-        {
-            p++;
-        }
-        else 
-        {
-            q = p;
-            number = 0;
-            while((q[0] != ' ') && (q[0] != '\n'))
-            {
-                if(q[0] == 92)
-                {
-                    q[0] = ' ';
-                    q[1] = q[2];
-                    for(i = 2; ; i++)
-                    {
-                        q[i] = q[i+1];
-                        if((q[i] == ' ') || (q[i] == '\n'))
-                        break;
-                    }
-                }
-                number++;
-                q++;
-            }
-            strncpy(arglist[*cnt], p, number + 1);
-            arglist[*cnt][number] = '\0';
-            *cnt=*cnt+1;
-            p = q;
-        }
-    }
+void get_cmd(char *buf,char *arglist[256])
+{    cnt=0;
+    char *p;
+    fgets(buf,256,stdin);
+    buf[strlen(buf)-1]='\n';
+    char *delim=" ";
+    p=strtok(buf,delim);
+    arglist[cnt++]=p;
+    while(p!=NULL)
+     {
+        p=strtok(NULL,delim);
+        arglist[cnt++]=p;
+     }
+     arglist[cnt]=NULL;
+     return;
 }
 
 int find_cmd(char *command)
 {
-  
 DIR *dp;
     struct dirent *dirp;
     char *path[] = {"./", "/bin", "/usr/bin", NULL};
-
     if( strncmp(command, "./", 2) == 0 )
     {
        command = command + 2;
     }
+    
 
     
     int i = 0;
@@ -186,7 +132,7 @@ DIR *dp;
 
 }
 
-void do_cmd(int cnt,char (*arglist)[256])
+void do_cmd(int cnt,char *arglist[256])
 {   int i,flag=0,how=0,m=0;
     int background=0;
     int status,status2;
@@ -196,11 +142,12 @@ void do_cmd(int cnt,char (*arglist)[256])
     pid_t pid,pid2;
     int fd;
     for(i=0;i<cnt;i++)
-     arg[i]=(char*)arglist[i];
+     arg[i]=arglist[i];
      arg[cnt]=NULL;
+     cnt--;
     for(i=0;i<cnt;i++)
-     {
-         if(strncmp(arg[i],"&",1)==0)
+     {   
+        if(strncmp(arg[i], "&", 1) == 0)
           {
               if(i==cnt-1)
                {
@@ -342,14 +289,16 @@ void do_cmd(int cnt,char (*arglist)[256])
           switch(how)
            {   case 0 : 
                if(pid==0)
-                {    
-                             
+                {         
+                              
                               if(!(find_cmd(arg[0])))
                                    {   
                                  printf("%s :command not found 301\n",arg[0]);
                                     exit(0);
                                    }
+                                    
                     execvp(arg[0],arg);
+                     
                     exit(0);
                 }
                 break;
