@@ -85,7 +85,7 @@ void get_cmd(char *buf,char *arglist[256])
 {    cnt=0;
     char *p;
     fgets(buf,256,stdin);
-    buf[strlen(buf)-1]='\n';
+    buf[strlen(buf)-1]='\0';
     char *delim=" ";
     p=strtok(buf,delim);
     arglist[cnt++]=p;
@@ -196,7 +196,7 @@ void do_cmd(int cnt,char *arglist[256])
                 
            }
            if(strcmp(arg[i],"|")==0)
-           {
+           {   
                flag=1;
                how=pipe;
                if(arg[i+1]==NULL)
@@ -336,9 +336,9 @@ void do_cmd(int cnt,char *arglist[256])
                        
                   }
                   break;
-                   case 3:      //|
+                   case 4:      //|
                  if(pid==0)
-                  {
+                  {    
                        if(pid2=fork()<0)
                         {
                             printf("fork() error\n");
@@ -375,7 +375,7 @@ void do_cmd(int cnt,char *arglist[256])
                   }
                   break;
                    
-                  case 4:    //>>
+                  case 3:    //>>
                  if(pid==0)
                   {
                             
