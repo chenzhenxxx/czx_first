@@ -1,4 +1,5 @@
 #include<stdio.h>
+#include<errno.h>
 #include<linux/limits.h>
 #include<sys/stat.h>
 #include<dirent.h>
@@ -10,55 +11,41 @@
 #include<signal.h>
 #include<string.h>
 #include<stdlib.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 #include"mshell.h"
-#define normal 0
-#define out_readirect 1 //>
-#define in_readirect 2  //<
-#define outt_readirect 3 //>>
-#define pipe 4    // |
 int cnt=0;
+char *arglist[256];
 int main(int argc,char **argv)
 {   
-    char *buf=NULL;
-    char *arglist[256];
+    
     char **arg=NULL;
-    buf=(char *)malloc(sizeof(char)*256);
-    if(buf==NULL)
-     {
-         printf("malloc failed\n");
-         exit(-1);
-     }
+  signal(SIGINT, SIG_IGN);
     while(1)
-    { memset(buf,0,256);
+    { 
       cnt=0;
-      fflush(stdin);
-      
       print_prompt();
- 
-     
+      char *buf=readline("\001\002MYshell $:");
+      read_history(NULL);
+      add_history(buf);
       get_cmd(buf,arglist);
-     if( strcmp(arglist[0], "exit\n") == 0 || strcmp(arglist[0], "logout\n") == 0)
+     if( strcmp(arglist[0], "exit") == 0 || strcmp(arglist[0], "logout") == 0)
      {
          break;
      }
-     
-    
-    do_cmd(cnt,arglist);
-   
+    cnt--;
+    do_cmd(cnt);
+    free(buf);
     }
 
-    if(buf!=NULL)
-    {
-        
-        free(buf);
-    }
+    
      exit(0);
 }
 
 void print_prompt()
 {
-    char hostname[50];
-    gethostname(hostname,50);
+    char hostname[100];
+    gethostname(hostname,100);
     struct passwd* username;
     username=getpwuid(getuid());
     char path[PATH_MAX+1];
@@ -70,7 +57,7 @@ void print_prompt()
     m='#';
     else
     m='$';
-    char colorhost[50];
+    char colorhost[100];
     char colorusername[PATH_MAX];
     char  colorpath[PATH_MAX];
     sprintf(colorhost,"\033[%dm%s\033[0m",32,hostname);
@@ -84,8 +71,6 @@ void print_prompt()
 void get_cmd(char *buf,char *arglist[256])
 {    cnt=0;
     char *p;
-    fgets(buf,256,stdin);
-    buf[strlen(buf)-1]='\0';
     char *delim=" ";
     p=strtok(buf,delim);
     arglist[cnt++]=p;
@@ -96,6 +81,7 @@ void get_cmd(char *buf,char *arglist[256])
      }
      arglist[cnt]=NULL;
      return;
+     
 }
 
 int find_cmd(char *command)
@@ -132,280 +118,213 @@ DIR *dp;
 
 }
 
-void do_cmd(int cnt,char *arglist[256])
-{   int i,flag=0,how=0,m=0;
-    int background=0;
-    int status,status2;
-    char *arg[cnt+1];
-    char *argnext[cnt+1];
-    char *file;
-    pid_t pid,pid2;
-    int fd;
-    for(i=0;i<cnt;i++)
-     arg[i]=arglist[i];
-     arg[cnt]=NULL;
-     cnt--;
-    for(i=0;i<cnt;i++)
-     {   
-        if(strncmp(arg[i], "&", 1) == 0)
+int cmd_cdx(int left,int right)
+{    
+   int endindex=right;
+   int flag=0; 
+     int outnum=0,innum=0,ooutnum=0;
+     char *infile=NULL,*outfile=NULL,*ooutfile=NULL;
+     if (!find_cmd(arglist[left])) 
+		return -1;
+		
+    for(int i=left;i<right;i++)
+     {
+         if(strcmp(arglist[i],">")==0)
           {
-              if(i==cnt-1)
+              outnum++;
+               if(endindex==right)  //记录第一次
+                 endindex=i;
+                 if(i+1<right)
+                  { 
+                   outfile=arglist[i+1]; 
+                  }
+          }
+          if(strcmp(arglist[i],">>")==0)
+          {
+              ooutnum++;
+              
+               if(endindex==right)  //记录第一次
+                 endindex=i;
+                 if(i+1<right)
+                  ooutfile=arglist[i+1]; 
+          }
+
+           if(strcmp(arglist[i],"<")==0)
+          {
+              innum++;
+               if(endindex==right)  //记录第一次
+                 endindex=i;
+                 if(i+1<right)
+                  infile=arglist[i+1];
+          }
+          if(strcmp(arglist[i],"&")==0)
+           {
+               if(i+1!=right)
                {
-                   background=1;
-                   arg[cnt-1]=NULL;
-                   break;
+                   printf("the & position is wrong.\n");
+
                }
-              else 
-              {
-                  printf("& position is wrong \n");
-                  return ;
-              }
+               else
+                flag=1; //后台运行
+
+           }
+          
+     }
+         if(innum>1)
+          {   
+              printf("< is too \n");
+              return -1;
+          }
+          else if(outnum>1)
+           {   
+               printf("> is too\n");
+               return -1;
+           }
+           else
+            {   
+                if(innum==1)
+                {   
+                    FILE* fp=open(infile,O_RDONLY);
+                     if(fp==NULL)
+                      {
+                          printf("the infile is not exit\n");
+                          return -1;
+                      }
+                }
+                
+                pid_t pid;
+                pid=vfork();
+
+                if(pid==-1)
+                {
+                    printf("vfork error\n");
+                    return -1;
+                }
+                else if(pid==0)
+                 {
+                     if(innum==1)
+                      {   
+                         
+                          freopen(infile, "r", stdin);
+
+                      }
+                      if(outnum==1)
+                      {   
+                           freopen(outfile, "w", stdout);
+                      }
+                      if(ooutnum==1)
+                      {   
+                          freopen(ooutfile, "a+", stdout); //追加
+                      }
+
+                      char *command[100];
+                      
+                      for( int i=left;i<endindex;i++)
+                        {
+                            command[i]=arglist[i];
+                        }
+                        command[endindex]=NULL;
+                        execvp(command[left],command+left);
+                        exit(0);
+                 }
+                 else 
+                 {
+                     int status;
+                     if(flag!=1)  //没有后台运行符
+		             waitpid(pid, &status, 0);
+                     
+                 }
+            }
+             return 1;
+}
+
+int cmd_pipe(int left,int right)
+{  
+    if(left>=right)
+    return 0;
+	int pipeindex=-1;
+    
+    for(int i=left;i<right;i++)
+     {
+         if(strcmp(arglist[i],"|")==0)
+          {
+              pipeindex=i;
+              break;
           }
      }
-
-     for(int i=0;arg[i]!=NULL;i++)
+     
+     if(pipeindex==-1)
+     {   
+         cmd_cdx(left,right);
+         return 1;
+     }
+     if(pipeindex+1==right)
       {
-          if(strcmp(arg[i],">")==0)
-           {
-               flag=1;
-               how=out_readirect;
-               if(arg[i+1]==NULL)
-                {
-                    flag++;
-                }
-                
-           }
-           if(strcmp(arg[i],">>")==0)
-           {
-               flag=1;
-               how=outt_readirect;
-               if(arg[i+1]==NULL)
-                {
-                    flag++;
-                }
-                
-           }
-           if(strcmp(arg[i],"<")==0)
-           {
-               flag=1;
-               how=in_readirect;
-               if(i==0)
-                {
-                    flag++;
-                }
-                
-           }
-           if(strcmp(arg[i],"|")==0)
-           {   
-               flag=1;
-               how=pipe;
-               if(arg[i+1]==NULL)
-                {
-                    flag++;
-                }
-                if(i==0)
-                {
-                    flag++;
-                }
-           }
+          printf("behind the | need a command\n");
+          return -1;
+      }
+      int fd[2];
+      if(pipe(fd)==-1)
+      {    
+          printf("pipe error\n");
+          return -1;
       }
 
-       if(flag>1)
-       {
-           printf("the command is wrong \n");
-           return ;
-       }
+      pid_t pid;
+      pid=vfork();
+      if(pid==-1)
+      {
+          printf("pid error\n");
+          return -1;
+      }
+       else if(pid==0)
+        {
+            close(fd[0]);
+            dup2(fd[1],STDOUT_FILENO);
+            close(fd[1]);
+            cmd_cdx(left,pipeindex);
+            exit(0);
+        }
+        else 
+         {   int status;
+             waitpid(pid,&status,0);
 
-       if(how==out_readirect)
-        {
-            for(int i=0;arg[i]!=NULL;i++)
-             {
-                 if(strcmp(arg[i],">")==0)
-                  {   file=arg[i+1];
-                      arg[i]=NULL;
-                      
-                  }
-             }
-        }
-         if(how==outt_readirect)
-        {
-            for(int i=0;arg[i]!=NULL;i++)
-             {
-                 if(strcmp(arg[i],">>")==0)
-                  {   file=arg[i+1];
-                      arg[i]=NULL;
-                  }
-             }
-        }
-         if(how==in_readirect)
-        {
-            for(int i=0;arg[i]!=NULL;i++)
-             {
-                 if(strcmp(arg[i],"<")==0)
-                  {   file=arg[i+1];
-                      arg[i]=NULL;
-                      break;
-                  }
-             }
-        }
-         if(how==pipe)
-        {
-            for(int i=0;arg[i]!=NULL;i++)
-             {  int j;
-                 if(strcmp(arg[i],"|")==0)
-                  {   
-                      arg[i]=NULL;
-                      for( j=i+1;arg[j]!=NULL;j++)
-                       argnext[j-i-1]=arg[j];
-                       
-                       argnext[j-i-1]=arg[j];
-                      break;
-                  }
-             }
-        }
-         if((arg[0]!=NULL)&&(strcmp(arg[0],"cd")==0))
-         {
-             if(arg[1]==NULL)
-             {
-                 return ;
-
-             }
-             if(strcmp(arg[1],"~")==0)
-              {
-                    strcpy(arg[1],"/home/chenzhenxin");
-              }
-              if(chdir(arg[1])==-1)
-               {
-                   perror("cd");
+           
+              if(pipeindex+1<right)
+               {    close(fd[1]);
+                    dup2(fd[0],STDIN_FILENO);
+                    close(fd[0]);
+                  cmd_pipe(pipeindex+1,right);
                }
-               return ;
          }
+         return 1;
 
-         if((pid=fork())<0)
+}
+
+void do_cmd(int cnt)
+{ 
+          pid_t pid=vfork();
+          if(pid==-1)
           {
-              printf("fork error\n");
-              return ;
-          }
-          switch(how)
-           {   case 0 : 
-               if(pid==0)
-                {         
-                              
-                              if(!(find_cmd(arg[0])))
-                                   {   
-                                 printf("%s :command not found 301\n",arg[0]);
-                                    exit(0);
-                                   }
-                                    
-                    execvp(arg[0],arg);
-                     
-                    exit(0);
-                }
-                break;
-
-                case 1:  //>
-                 if(pid==0)
-                  {
-                      
-                         
-                   if(!(find_cmd(arg[0])))
-                      {
-                          printf("%s :command not found 316\n",arg[0]);
-                          exit(0);
-                      }
-                            fd=open(file,O_RDWR|O_CREAT|O_TRUNC,0644);
-                            dup2(fd,1);
-                            execvp(arg[0],arg);
-                            exit(0);
-                       
-                  }
-                  break;
-                   case 2:   //<
-                 if(pid==0)
-                  {
-                              
-                  if(!(find_cmd(arg[0])))
-                      {
-                          printf("%s :command not found 332\n",arg[0]);
-                          exit(0);
-                      }
-                            fd=open(file,O_RDONLY,0644);
-                            dup2(fd,0);
-                            execvp(arg[0],arg);
-                            exit(0);
-                       
-                  }
-                  break;
-                   case 4:      //|
-                 if(pid==0)
-                  {    
-                       if(pid2=fork()<0)
-                        {
-                            printf("fork() error\n");
-                            return ;
-                        }
-                        if(pid2==0)
-                          {      
-                   if(!(find_cmd(arg[0])))
-                      {
-                          printf("%s :command not found 354\n",arg[0]);
-                          exit(0);
-                      }
-                              fd=open("/home/chenzhenxin/1.txt",O_WRONLY|O_CREAT|O_TRUNC,0644);
-                              dup2(fd,1);
-                              execvp(arg[0],arg);
-                              exit(0);
-                          }
-                          if(waitpid(pid2,&status2,0)==-1)
-                           {
-                               printf("wait for child process error\n");
-                           }
-
-                           if( !(find_cmd(argnext[0])) )
-                         {
-                           printf("%s : command not found 369\n", argnext[0]);
-                           exit(0);
-                         }
-
-                         fd=open("/home/chenzhenxin/1.txt",O_RDONLY,0644);
-                              dup2(fd,0);
-                              execvp(argnext[0],argnext);
-                              exit(0);
-
-                  }
-                  break;
-                   
-                  case 3:    //>>
-                 if(pid==0)
-                  {
-                            
-                        if(!(find_cmd(arg[0])))
-                      {
-                          printf("%s :command not found 387\n",arg[0]);
-                          exit(0);
-                      }
-                           
-                            fd=open(file,O_RDWR | O_CREAT | O_APPEND,0644);
-                            dup2(fd,1);
-                            execvp(arg[0],arg);
-                            exit(0);
-                       
-                  }
-                  break;
-
-                  default: break;
-
-           }
-
-
-           if(background==1)
-           {   printf("process id %d \n", pid);
+              printf("vfork error\n");
                return ;
+          }
+          else if(pid==0)
+           {
+               int inFd=dup(0);
+               int outFd=dup(1);
+               
+               cmd_pipe(0,cnt);
+
+               dup2(inFd, STDIN_FILENO);
+		    dup2(outFd, STDOUT_FILENO);
+               exit(0);
+           }
+           else
+           {
+               int status;
+               waitpid(pid,&status,0);
            }
 
-           if(waitpid(pid,&status,0)==-1)
-            {
-                printf("wait for child process error\n");
-            }
 }
 
