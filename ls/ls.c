@@ -96,9 +96,9 @@ int main(int argc,char*argv[])
               
               else
                {  
-
                    if(lstat(argv[m],&buf)==-1)
-                    {
+                    {   if(errno==13)
+                        printf("Perssion denied\n");
                         my_error("lstat",__LINE__);
                     }
 
@@ -368,6 +368,13 @@ if(getcwd(name_dir,10000)<0){
  
  dir = opendir(name_dir);     //用新获得的路径打开目录
 if(dir==NULL){
+   if(errno==13)
+   {
+     printf("Perrsion denied\n");
+     return;
+
+   }
+   else
   my_error("opendir",__LINE__);
 }
 
@@ -385,8 +392,8 @@ closedir(dir);
  
 for(i=0;i<count;i++){
  
-  filenames[i]=(char*)malloc(256*sizeof(char));
-  memset(filenames[i],0,sizeof(char)*256);
+  filenames[i]=(char*)malloc(512*sizeof(char));
+  memset(filenames[i],0,sizeof(char)*512);
 }
  
  
@@ -721,13 +728,17 @@ void display_dir(int flag,char*path)
     DIR *dir;
     struct dirent * ptr;
     int cnt=0;  //计算文件个数
-    char filename[256][PATH_MAX+1];
     long filetime[256];
     char tmpfilename[PATH_MAX+1];
     struct stat buf;
     dir=opendir(path);
     if(dir==NULL)
-    {
+    {   if(errno==13)
+        {
+          printf("Perrsion denied\n");
+          return;
+        }
+        else
         my_error("opendir",__LINE__);
     }
     while((ptr=readdir(dir))!=NULL)
@@ -748,10 +759,10 @@ void display_dir(int flag,char*path)
         cnt++;
      }
      closedir(dir);
-
-     if(cnt>256)  //过多文件
-      printf("%d :too many files under this dir",__LINE__);
-      
+     
+     char **filename=(char**)malloc(sizeof(char *)*(cnt+1));
+     for(int i=0;i<cnt+1;i++)
+      filename[i]=(char*)malloc(sizeof(char)*100);
       dir=opendir(path);
      for(int i=0;i<cnt;i++)
      {
@@ -862,5 +873,9 @@ void display_dir(int flag,char*path)
                        }
 
              }
-
+          for(int i=0;i<cnt;i++)
+    {
+      free(filename[i]);
+    }
+    free(filename);
 }
