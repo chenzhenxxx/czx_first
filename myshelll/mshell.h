@@ -7,4 +7,5 @@ int find_cmd(char *command);
 void do_cmd(int cnt);
 int cmd_cdx(int left,int right);
 int cmd_pipe(int left,int right);
+void cmd_cd(char *arglist[256]);
 #endif

@@ -4,6 +4,7 @@
 #include<sys/stat.h>
 #include<dirent.h>
 #include <sys/types.h>
+#include <sys/wait.h> 
 #include <pwd.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -14,13 +15,15 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include"mshell.h"
-int cnt=0;
+int cnt=1;
 char *arglist[256];
+char cdform[100][100]; //用来 cd -
+int cd_cnt=0;
 int main(int argc,char **argv)
 {   
-    
+    strcpy(cdform[0],"/home/chenzhenxin/");
     char **arg=NULL;
-  signal(SIGINT, SIG_IGN);
+  signal(SIGINT, SIG_IGN);  //屏蔽信号
     while(1)
     { 
       cnt=0;
@@ -29,13 +32,20 @@ int main(int argc,char **argv)
       read_history(NULL);
       add_history(buf);
       get_cmd(buf,arglist);
+
      if( strcmp(arglist[0], "exit") == 0 || strcmp(arglist[0], "logout") == 0)
      {
          break;
      }
-    cnt--;
-    do_cmd(cnt);
-    free(buf);
+     if(strcmp(arglist[0],"cd")==0)
+     {
+         cmd_cd(arglist);
+         continue;
+     }
+
+     cnt--;
+     do_cmd(cnt);
+     free(buf);
     }
 
     
@@ -44,12 +54,12 @@ int main(int argc,char **argv)
 
 void print_prompt()
 {
-    char hostname[100];
-    gethostname(hostname,100);
+    char hostname[50];
+    gethostname(hostname,50);
     struct passwd* username;
     username=getpwuid(getuid());
-    char path[PATH_MAX+1];
-    getcwd(path,PATH_MAX+1);
+    char path[256];
+    getcwd(path,256);
     int x;
     char m;
     x=geteuid();
@@ -180,16 +190,22 @@ int cmd_cdx(int left,int right)
                printf("> is too\n");
                return -1;
            }
+           else if(ooutnum>1)
+           {   
+               printf(">> is too\n");
+               return -1;
+           }
            else
             {   
                 if(innum==1)
                 {   
-                    FILE* fp=open(infile,O_RDONLY);
-                     if(fp==NULL)
+                   int fd=open(infile,O_RDONLY);
+                     if(fd<0)
                       {
                           printf("the infile is not exit\n");
                           return -1;
                       }
+                      close(fd);
                 }
                 
                 pid_t pid;
@@ -317,7 +333,7 @@ void do_cmd(int cnt)
                cmd_pipe(0,cnt);
 
                dup2(inFd, STDIN_FILENO);
-		    dup2(outFd, STDOUT_FILENO);
+		       dup2(outFd, STDOUT_FILENO);
                exit(0);
            }
            else
@@ -326,5 +342,40 @@ void do_cmd(int cnt)
                waitpid(pid,&status,0);
            }
 
+}
+void cmd_cd(char *arglist[256])
+{    
+    if(arglist[1]==NULL)
+    {
+        return;
+    }
+
+    if(strcmp(arglist[1],"-")!=0&&strcmp(arglist[1],"~")!=0) 
+    {     char buf[100];
+          getcwd(buf,sizeof(buf));
+          strcpy(cdform[++cd_cnt],buf);
+    }
+
+     if(strcmp(arglist[1],"~")==0)
+    {
+        strcpy(arglist[1], "/home/chenzhenxin/");
+    }
+
+     else if(strcmp(arglist[1],"-")==0)
+    {   if(cd_cnt>0)
+        {
+        strcpy(arglist[1],cdform[cd_cnt]);
+        }
+        else 
+        strcpy(arglist[1],cdform[0]);
+        cd_cnt--;
+    }
+    
+    if(chdir(arglist[1])==-1)
+    {
+        printf("chdir error\n");
+    }
+   
+    return;
 }
 
