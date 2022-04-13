@@ -1,24 +1,10 @@
-#include<stdio.h>
-#include<errno.h>
-#include<linux/limits.h>
-#include<sys/stat.h>
-#include<dirent.h>
-#include <sys/types.h>
-#include <sys/wait.h> 
-#include <pwd.h>
-#include <stdio.h>
-#include <unistd.h>
-#include<fcntl.h>
-#include<signal.h>
-#include<string.h>
-#include<stdlib.h>
-#include <readline/readline.h>
-#include <readline/history.h>
 #include"mshell.h"
+
 int cnt=1;
 char *arglist[256];
 char cdform[100][100]; //用来 cd -
 int cd_cnt=0;
+
 int main(int argc,char **argv)
 {   
     strcpy(cdform[0],"/home/chenzhenxin/");
