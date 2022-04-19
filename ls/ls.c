@@ -98,7 +98,12 @@ int main(int argc,char*argv[])
                {  
                    if(lstat(argv[m],&buf)==-1)
                     {   if(errno==13)
+                       {
+
                         printf("Perssion denied\n");
+                        errno=0;
+                       }
+                        else 
                         my_error("lstat",__LINE__);
                     }
 
@@ -345,40 +350,39 @@ DIR * dir;
 struct dirent  *ptr;
 int     i,count = 0;
 struct stat buf;
-char name_dir[10000];
+char name_dir[1000];
 if(chdir(name)<0)                              //将输入的目录改为当前目录，下面操作的前提
-{ 
-    if(lstat(name,&buf)==-1)
-          {  if(errno==13)
-              { printf("Permission denied\n");
-                return;
-              }
-              else if(strncmp(name,"/proc",4)==0)
-                 { printf("this is a /proc file\n");
-                   return;
-                 }
-            else 
-             my_error("lstat",__LINE__);
-          }
+{ if(errno==13)
+  {
+    printf("perssioned error\n");
+    errno=0;
+    return;
+  }
+  
+  else 
+  my_error("chdir",__LINE__);
 }
-if(getcwd(name_dir,10000)<0){
+if(getcwd(name_dir,1000)<0){
   my_error("getcwd",__LINE__);                   //获取当前目录的绝对路径（重要，下面的打开目录的操作需要这个路径，否则需要手动添加）
 }
  printf("%s:\n",name_dir);
  
  dir = opendir(name_dir);     //用新获得的路径打开目录
 if(dir==NULL){
-   if(errno==13)
-   {
-     printf("Perrsion denied\n");
-     return;
-
-   }
-   else
-  my_error("opendir",__LINE__);
+  if(errno==13)
+  {
+    printf("perssioned error\n");
+    errno=0;
+    return;
+  }
+  
+  else 
+  {
+    my_error("opendir",__LINE__);
+    return;
+    
+  }
 }
-
-  g_maxlen=0;
 while((ptr = readdir(dir))!=NULL){
   if(g_maxlen<strlen(ptr->d_name))
          g_maxlen = strlen(ptr->d_name);
@@ -386,14 +390,14 @@ while((ptr = readdir(dir))!=NULL){
 }
 closedir(dir);
  
-//动态数组(用静态数组会爆)
-  char**filenames =(char**)malloc(count*sizeof(char*));  
-  memset(filenames,0,sizeof(char*)*count);
+//动态数组
+  char**filenames =(char**)malloc((count)*sizeof(char*));    //要进行初始化 
+  memset(filenames,0,sizeof(char*)*(count));
  
 for(i=0;i<count;i++){
  
-  filenames[i]=(char*)malloc(512*sizeof(char));
-  memset(filenames[i],0,sizeof(char)*512);
+  filenames[i]=(char*)malloc(g_maxlen*sizeof(char));
+  memset(filenames[i],0,sizeof(char)*g_maxlen);
 }
  
  
@@ -402,110 +406,76 @@ dir = opendir(name_dir);
 for(i=0;i<count;i++){
     ptr = readdir(dir);
     if(ptr == NULL){
+        if(errno==13)
+  {
+    printf("perssioned error\n");
+    errno=0;
+    continue;
+  }   
+      else 
       my_error("readdir",__LINE__);
     }
- 
-    strcat(filenames[i],ptr->d_name);    
-}
-if(flag&PARAM_r)
-{
-flag-=PARAM_r;
- flag1=1;
-}
- if(flag1==0)   //没有r
- {
-for(i=0;i<count;i++)
-   display_file(flag,filenames[i]);
    
-   printf("\n");
-                          //递归实现核心部分
- 
+    strcat(filenames[i],ptr->d_name);    //这里要注意用之前的初始化
+}
+for(i=0;i<count;i++)
+   {
+     
+   display_file(flag,filenames[i]);
+   }
+  printf("\n");
+
+     
       for(i=0;i<count;i++){
  
           if(lstat(filenames[i],&buf)==-1)
-          {  if(errno==13)
-              { printf("Permission denied\n");
-                return;
+          {  
+              if(errno==13)
+              { 
+                errno=0;
+                printf("perrsion denied\n");
+                
               }
-              else if(strncmp(filenames[i],"/proc",4)==0)
-                 { printf("this is a /proc file\n");
-                   return;
-                 }
-            else 
-             my_error("lstat",__LINE__);
+             
+              if(errno==2)
+                { 
+                  errno=0;
+              
+                }
+    
+              
+             else
+             my_error("stat",__LINE__);
+             
           }
+          else
+          {
+         
           if(strcmp(filenames[i],"..")==0)
           continue;
-          if(filenames[i][0]=='.')
+          if(strcmp(filenames[i],".")==0)
           continue;
           if(S_ISDIR(buf.st_mode)){
-            h=0;
-            g_leave_len=MAXROWLEN;
             ls_R(filenames[i],flag);
           }
           else if(!S_ISDIR(buf.st_mode))
            {
              continue;
            }
-               chdir("../");          //处理完一个目录后返回上一层
-        }
- 
-    
-    for(i=0;i<count;i++)
-    {
-      free(filenames[i]);
-    }
-    free(filenames);
-    closedir(dir); 
-  }
-  else  //有r
-     {
-       for(i=count-1;i>=0;i--)
-   display_file(flag,filenames[i]);
-   
-   printf("\n");
-                          //递归实现核心部分
- 
-      for(i=count-1;i>=0;i--){
- 
-          if(lstat(filenames[i],&buf)==-1)
-          {  if(errno==13)
-              { printf("Permission denied\n");
-                return;
-              }
-              else if(strncmp(filenames[i],"/proc",4)==0)
-                 { printf("this is a /proc file\n");
-                   return;
-                 }
-            else 
-             my_error("lstat",__LINE__);
-          }
-          if(strcmp(filenames[i],"..")==0)
-          continue;
-          if(filenames[i][0]=='.')
-          continue;
-          if(S_ISDIR(buf.st_mode)){
-            h=0;
-            g_leave_len=MAXROWLEN;
-            ls_R(filenames[i],flag);
-          }
-          else if(!S_ISDIR(buf.st_mode))
-           {
-             continue;
            }
-               chdir("../");          //处理完一个目录后返回上一层
+               chdir("../");
+                  //处理完一个目录后返回上一层
         }
- 
-    
+        
+         
     for(i=0;i<count;i++)
     {
       free(filenames[i]);
     }
     free(filenames);
-    closedir(dir); 
-     }
-           
-}
+    closedir(dir);          //在函数开始时打开，结束时关闭
+    }
+
 
 void time_quicksort(long filetime[],char filename[256][PATH_MAX+1],int begin,int end)
 {  char tmpname[PATH_MAX+1];
@@ -570,9 +540,7 @@ void display_file(int flag,char *filename)
 
                    //判断颜色
                  if(lstat(filename,&buf)==-1)
-                   {    if(errno==13)
-                        return;
-                        else
+                   {    
                        my_error("lstat",__LINE__);
                    }
 
@@ -733,12 +701,7 @@ void display_dir(int flag,char*path)
     struct stat buf;
     dir=opendir(path);
     if(dir==NULL)
-    {   if(errno==13)
-        {
-          printf("Perrsion denied\n");
-          return;
-        }
-        else
+    {  
         my_error("opendir",__LINE__);
     }
     while((ptr=readdir(dir))!=NULL)
@@ -873,7 +836,7 @@ void display_dir(int flag,char*path)
                        }
 
              }
-          for(int i=0;i<cnt;i++)
+          for(int i=0;i<cnt+1;i++)
     {
       free(filename[i]);
     }
