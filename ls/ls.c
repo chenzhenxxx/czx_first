@@ -143,7 +143,7 @@ void my_error(const char * err_string,int line)
 {
     fprintf(stderr,"line:%d ",line);
     perror(err_string);
-    exit(1);
+    //exit(1);
 }
 
 int cmp(const void *_a,const void *_b)
@@ -353,9 +353,8 @@ struct stat buf;
 char name_dir[1000];
 if(chdir(name)<0)                              //将输入的目录改为当前目录，下面操作的前提
 { if(errno==13)
-  {  perror("opendir");
-    //my_error("opendir",__LINE__);
-    return;
+  {  
+    my_error("chdir",__LINE__);
     
   }
   
@@ -374,16 +373,17 @@ if(getcwd(name_dir,1000)<0){
  dir = opendir(name_dir);     //用新获得的路径打开目录
 if(dir==NULL){
   if(errno==13)
-  {
-    perror("opendir");
-   
+  {  
+    printf("Permission denied 1\n");
+    
   }
   
   else 
   {
     my_error("opendir",__LINE__);
+    
   }
-  return;
+    return;
 }
 while((ptr = readdir(dir))!=NULL){
   if(g_maxlen<strlen(ptr->d_name))
