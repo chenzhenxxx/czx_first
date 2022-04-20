@@ -348,22 +348,26 @@ void ls_R(char*name,int flag)
 {
 DIR * dir;
 struct dirent  *ptr;
-int     i,count = 0;
+int   i,count = 0;
 struct stat buf;
 char name_dir[1000];
 if(chdir(name)<0)                              //将输入的目录改为当前目录，下面操作的前提
 { if(errno==13)
-  {
-    printf("perssioned error\n");
-    errno=0;
+  {  perror("opendir");
+    //my_error("opendir",__LINE__);
     return;
+    
   }
   
   else 
   my_error("chdir",__LINE__);
+
+   return;
 }
 if(getcwd(name_dir,1000)<0){
-  my_error("getcwd",__LINE__);                   //获取当前目录的绝对路径（重要，下面的打开目录的操作需要这个路径，否则需要手动添加）
+
+  my_error("getcwd",__LINE__); 
+  return;                  //获取当前目录的绝对路径（重要，下面的打开目录的操作需要这个路径，否则需要手动添加）
 }
  printf("%s:\n",name_dir);
  
@@ -371,23 +375,22 @@ if(getcwd(name_dir,1000)<0){
 if(dir==NULL){
   if(errno==13)
   {
-    printf("perssioned error\n");
-    errno=0;
-    return;
+    perror("opendir");
+   
   }
   
   else 
   {
     my_error("opendir",__LINE__);
-    return;
-    
   }
+  return;
 }
 while((ptr = readdir(dir))!=NULL){
   if(g_maxlen<strlen(ptr->d_name))
          g_maxlen = strlen(ptr->d_name);
     count++;
 }
+
 closedir(dir);
  
 //动态数组
@@ -402,6 +405,7 @@ for(i=0;i<count;i++){
  
  
 int j,len=strlen(name_dir);
+
 dir = opendir(name_dir);
 for(i=0;i<count;i++){
     ptr = readdir(dir);
@@ -409,11 +413,12 @@ for(i=0;i<count;i++){
         if(errno==13)
   {
     printf("perssioned error\n");
-    errno=0;
-    continue;
+   
   }   
       else 
       my_error("readdir",__LINE__);
+
+      break;
     }
    
     strcat(filenames[i],ptr->d_name);    //这里要注意用之前的初始化
@@ -432,20 +437,12 @@ for(i=0;i<count;i++)
           {  
               if(errno==13)
               { 
-                errno=0;
+                
                 printf("perrsion denied\n");
                 
               }
-             
-              if(errno==2)
-                { 
-                  errno=0;
-              
-                }
-    
-              
-             else
-             my_error("stat",__LINE__);
+
+             continue;
              
           }
           else
@@ -453,9 +450,9 @@ for(i=0;i<count;i++)
          
           if(strcmp(filenames[i],"..")==0)
           continue;
-          if(strcmp(filenames[i],".")==0)
+          else if(strcmp(filenames[i],".")==0)
           continue;
-          if(S_ISDIR(buf.st_mode)){
+          else if(S_ISDIR(buf.st_mode)){
             ls_R(filenames[i],flag);
           }
           else if(!S_ISDIR(buf.st_mode))
@@ -463,9 +460,10 @@ for(i=0;i<count;i++)
              continue;
            }
            }
+      }
                chdir("../");
                   //处理完一个目录后返回上一层
-        }
+        
         
          
     for(i=0;i<count;i++)
@@ -473,6 +471,7 @@ for(i=0;i<count;i++)
       free(filenames[i]);
     }
     free(filenames);
+
     closedir(dir);          //在函数开始时打开，结束时关闭
     }
 
