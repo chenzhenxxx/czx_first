@@ -27,12 +27,13 @@ int h=0,h_max=2; //h_max一行最多多少个文件名
 int flag1=0;  
 int g_maxlen;    //最长文件名长度
 int g_leave_len = MAXROWLEN;  //本行剩下多少空间
+int flag=1;
 void my_error(const char * err_string,int line);    
 void  display_single(char *name ,int color);
 void ls_l(struct stat buf,char *name,int color);
 void ls_i(char *name,int color);
 void ls_s(char * name,int color);
-void ls_R(char *path,int flag);
+int ls_R(char *path,int flag);
 void display_dir(int flag,char*path);
 void display_file(int flag,char *filename);
 int cmp(const void *_a,const void *_b);
@@ -143,14 +144,14 @@ void my_error(const char * err_string,int line)
 {
     fprintf(stderr,"line:%d ",line);
     perror(err_string);
-    //exit(1);
+    exit(1);
 }
 
 int cmp(const void *_a,const void *_b)
 {
     char *a=(char*)_a;
     char *b=(char*)_b;
-    return strcmp(a,b);
+    return strcmp(a,b)>0;
 }
 
  void display_single(char *name,int filecolor)
@@ -343,37 +344,41 @@ void ls_s(char * name,int color)
         }
 }
 
-void ls_R(char*name,int flag)
+int ls_R(char*name,int flag)
  
-{
+{   
 DIR * dir;
 struct dirent  *ptr;
 int   i,count = 0;
 struct stat buf;
 char name_dir[1000];
 if(chdir(name)<0)                              //将输入的目录改为当前目录，下面操作的前提
-{ if(errno==13)
-  {  
-    my_error("chdir",__LINE__);
-    
+{ 
+  if(errno==13)
+  {  errno=0;
+   printf("%s/%s :",name_dir,name);
+    printf("no perssion\n"); 
+   
   }
   
   else 
   my_error("chdir",__LINE__);
+   
 
-   return;
+    return -1;
+   
 }
 if(getcwd(name_dir,1000)<0){
-
-  my_error("getcwd",__LINE__); 
-  return;                  //获取当前目录的绝对路径（重要，下面的打开目录的操作需要这个路径，否则需要手动添加）
+  
+  my_error("getcwd",__LINE__);  
+  return 0;                //获取当前目录的绝对路径（重要，下面的打开目录的操作需要这个路径，否则需要手动添加）
 }
  printf("%s:\n",name_dir);
  
  dir = opendir(name_dir);     //用新获得的路径打开目录
 if(dir==NULL){
   if(errno==13)
-  {  
+  {  errno=0;
     printf("Permission denied 1\n");
     
   }
@@ -383,7 +388,8 @@ if(dir==NULL){
     my_error("opendir",__LINE__);
     
   }
-    return;
+     
+    return 0;
 }
 while((ptr = readdir(dir))!=NULL){
   if(g_maxlen<strlen(ptr->d_name))
@@ -399,80 +405,89 @@ closedir(dir);
  
 for(i=0;i<count;i++){
  
-  filenames[i]=(char*)malloc(g_maxlen*sizeof(char));
-  memset(filenames[i],0,sizeof(char)*g_maxlen);
+  filenames[i]=(char*)malloc(1024*sizeof(char));
+  memset(filenames[i],0,sizeof(char)*1024);
 }
  
  
-int j,len=strlen(name_dir);
+int j,len=strlen(name_dir),h=0;
 
 dir = opendir(name_dir);
 for(i=0;i<count;i++){
     ptr = readdir(dir);
     if(ptr == NULL){
         if(errno==13)
-  {
+  {     errno=0;
     printf("perssioned error\n");
    
   }   
       else 
       my_error("readdir",__LINE__);
 
-      break;
+      continue;
     }
    
-    strcat(filenames[i],ptr->d_name);    //这里要注意用之前的初始化
+    strcat(filenames[h++],ptr->d_name);    //这里要注意用之前的初始化
 }
-for(i=0;i<count;i++)
+for(i=0;i<h;i++)
    {
-     
+    
    display_file(flag,filenames[i]);
    }
   printf("\n");
 
      
-      for(i=0;i<count;i++){
- 
+      for(i=0;i<h;i++){
+            
           if(lstat(filenames[i],&buf)==-1)
-          {  
+          {   //printf("%s/%s\n",name_dir,filenames[i]);
               if(errno==13)
-              { 
-                
+              { printf("%s/%s\n",name_dir,filenames[i]);
+                errno=0;
                 printf("perrsion denied\n");
                 
               }
-
+               free(filenames[i]);
+               //my_error("lstat",__LINE__);
+                 
              continue;
              
           }
           else
           {
-         
+            
           if(strcmp(filenames[i],"..")==0)
+          { 
+           free(filenames[i]);
           continue;
-          else if(strcmp(filenames[i],".")==0)
+          }
+        else if(strcmp(filenames[i],".")==0)
+          { free(filenames[i]);
           continue;
-          else if(S_ISDIR(buf.st_mode)){
-            ls_R(filenames[i],flag);
+          }
+           else if(S_ISDIR(buf.st_mode)){
+            if(ls_R(filenames[i],flag)!=-1)
+            chdir("../");
+            free(filenames[i]);
+             
           }
           else if(!S_ISDIR(buf.st_mode))
            {
              continue;
+             free(filenames[i]);
            }
+           
+
            }
       }
-               chdir("../");
+         
+               
                   //处理完一个目录后返回上一层
         
         
-         
-    for(i=0;i<count;i++)
-    {
-      free(filenames[i]);
-    }
     free(filenames);
-
-    closedir(dir);          //在函数开始时打开，结束时关闭
+    closedir(dir);
+     return 1;          //在函数开始时打开，结束时关闭
     }
 
 
@@ -608,7 +623,7 @@ void display_file(int flag,char *filename)
             else if(flag==(PARAM_a+PARAM_l))
             {
                
-				ls_l(buf,name,filecolor);
+				  ls_l(buf,name,filecolor);
             }
             else if(flag==(PARAM_i+PARAM_s))
             {   if(name[0]!='.')
@@ -702,6 +717,7 @@ void display_dir(int flag,char*path)
     if(dir==NULL)
     {  
         my_error("opendir",__LINE__);
+        return;
     }
     while((ptr=readdir(dir))!=NULL)
      {
@@ -769,7 +785,19 @@ void display_dir(int flag,char*path)
         }
         else   //用文件名首字母排序
          {
-              qsort(filename,cnt,sizeof(filename[0]),cmp);          
+              for(int i=0;i<cnt;i++)
+               {
+                 for(int j=i+1;j<cnt;j++)
+                  {
+                    if(strcmp(filename[i],filename[j])>0)
+                     {
+                       char tmp[1024];
+                        strcpy(tmp,filename[i]);
+                        strcpy(filename[i],filename[j]);
+                        strcpy(filename[j],tmp);
+                     }
+                  }
+               }          
  
          }
            //for(int i=0;i<cnt;i++)
@@ -824,7 +852,9 @@ void display_dir(int flag,char*path)
              {
                      if(flag&PARAM_R)
                       {   flag-=PARAM_R;
+                          
                           ls_R(path,flag);
+                          
                       }
                       else
                        {   
