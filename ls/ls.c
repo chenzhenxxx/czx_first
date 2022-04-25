@@ -1,7 +1,3 @@
-//几个问题：
-// ls -R 时我需要进入到root下才能遍历完根目录
-// my_ls -rR和ls的有些区别 
-// 自己写的timeqort函数对小一点文件可以排序，但是大一点就卡住了。用插入排序直接排没事。
 #include<stdio.h>
 #include <linux/limits.h> //包含PATH_MAX =260
 #include<string.h>
