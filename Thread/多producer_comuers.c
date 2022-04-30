@@ -75,13 +75,14 @@ void *MPMCQueuePop(MPMCQueue *pool)
 }
 MPMCQueue *MPMCQueueInit(int threadNumber)
 {   
+     MPMCQueue * pool=NULL;
     pthread_mutex_init(&mutex,NULL);
     pthread_cond_init(&cond,NULL);
     head=NULL;
     tail=NULL;
     for(int i=0;i<threadNumber;i++)
     {   int ret;
-        ret=pthread_create(&pid,NULL,(void *)MPMCQueuePop,NULL);
+        ret=pthread_create(&pid,NULL,MPMCQueuePop,(MPMCQueue *)pool);
         if(ret!=0)
          {
              printf("Error:pthread_create m%d\n",i);
@@ -89,7 +90,7 @@ MPMCQueue *MPMCQueueInit(int threadNumber)
     }
     for(int i=0;i<threadNumber;i++)
     {   int ret;
-        ret=pthread_create(&cid,NULL,(void *)MPMCQueuePush,NULL);
+        ret=pthread_create(&cid,NULL,MPMCQueuePush,(MPMCQueue *)pool);
         if(ret!=0)
          {
              printf("Error:pthread_create c%d\n",i);
