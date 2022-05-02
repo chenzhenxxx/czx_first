@@ -1,4 +1,4 @@
-//先拿起左筷子，如果右筷子被拿起，放下左筷子
+//先拿起左筷子，如果右筷子被拿起，放下左筷
 #include<stdio.h>
 #include<pthread.h>
 pthread_mutex_t pthread_kz[5];
