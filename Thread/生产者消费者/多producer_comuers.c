@@ -38,7 +38,7 @@ MPMCQueue *MPMCQueueInit(int capacity)
 
 
 }
-void *MPMCQueuePop(MPMCQueue *pool)
+void MPMCQueuePush(MPMCQueue *pool, void *s)
 {
    while(1)
     {
@@ -56,10 +56,10 @@ void *MPMCQueuePop(MPMCQueue *pool)
          {
              printf("already full\n");
          }
-         sleep(rand()%2);
+         sleep(rand()%3);
     }
 }
-void MPMCQueuePush(MPMCQueue *pool, void *s)
+void *MPMCQueuePop(MPMCQueue *pool)
 {
     while(1)
     {
@@ -85,13 +85,13 @@ int main()
    pthread_t pid,cid;
    srand(time(NULL));//是随机数发生器的初始化函数
    int ret;
-   ret=pthread_create(&pid,NULL,(void*)MPMCQueuePop,pool);
+   ret=pthread_create(&pid,NULL,(void*)MPMCQueuePush,pool);
     if(ret!=0)
      {
          printf("Error:pthread_create producter!\n");
 
      }
-    ret=pthread_create(&cid,NULL,(void*)MPMCQueuePush,pool);
+    ret=pthread_create(&cid,NULL,(void*)MPMCQueuePop,pool);
     if(ret!=0)
      {
          printf("Error:pthread_create producter!\n");

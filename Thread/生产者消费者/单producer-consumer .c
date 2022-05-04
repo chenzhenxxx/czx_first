@@ -38,7 +38,7 @@ SPSCQueue *SPSCQueueInit(int capacity)
 
 
 }
-void *SPSCQueuePop(SPSCQueue *pool)
+void SPSCQueuePush(SPSCQueue *pool, void *s)
 {
    while(1)
     {
@@ -59,7 +59,7 @@ void *SPSCQueuePop(SPSCQueue *pool)
          sleep(rand()%2);
     }
 }
-void SPSCQueuePush(SPSCQueue *pool, void *s)
+void *SPSCQueuePop(SPSCQueue *pool)
 {
     while(1)
     {
@@ -85,13 +85,13 @@ int main()
    pthread_t pid,cid;
    srand(time(NULL));//是随机数发生器的初始化函数
    int ret;
-   ret=pthread_create(&pid,NULL,(void*)SPSCQueuePop,pool);
+   ret=pthread_create(&pid,NULL,(void*)SPSCQueuePush,pool);
     if(ret!=0)
      {
          printf("Error:pthread_create producter!\n");
 
      }
-    ret=pthread_create(&cid,NULL,(void*)SPSCQueuePush,pool);
+    ret=pthread_create(&cid,NULL,(void*)SPSCQueuePop,pool);
     if(ret!=0)
      {
          printf("Error:pthread_create producter!\n");
