@@ -65,7 +65,7 @@ void *SPSCQueuePop(SPSCQueue *pool)
     {
         pthread_mutex_lock(&mutex);
         if(pool->num==0)
-         {
+         {   
              pthread_cond_wait(&cond,&mutex);
          }
          
