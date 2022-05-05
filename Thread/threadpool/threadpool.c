@@ -249,9 +249,26 @@ int threadPoolDestroy(ThreadPool* pool)
     }
     pool->shutdown=1; //关闭线程池
 
-    pthread_join(&pool->managerID,NULL);  //回收管理者
-    for(int i=0;i<pool->maxNum;i++)
+    pthread_join(&pool->managerID,NULL);  //阻塞回收管理者
+    for(int i=0;i<pool->liveNum;i++)
     {
-        pthread_
+        pthread_cond_signal(&pool->notempty);
     }
+    if(pool->Q)
+    {
+        free(pool->Q);
+    }
+    if(pool->threadID)
+    {
+        free(pool->threadID);
+    }
+    if(pool)
+    free(pool);
+    pool=NULL;
+    pthread_mutex_destroy(&pool->mutexbusy);
+     pthread_mutex_destroy(&pool->mutexpool);
+      pthread_cond_destroy(&pool->notempty);
+       pthread_cond_destroy(&pool->notfull);
+        
+    return 0;
 }
