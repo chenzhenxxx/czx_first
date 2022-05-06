@@ -2,10 +2,13 @@
 #include<string>
 #include<bits/stdc++.h>
 using namespace std;
-struct Person
-{
+class Person
+{   friend  istream& get(istream& is,Person&me);
+    friend  ostream& print(ostream &os,Person &p);
+   private:
     string name;
     string address;
+    public:
     Person(const string &s):name(s){}
     Person(const string &a,const string &b):name(a),address(b){}
     Person (istream &is);
