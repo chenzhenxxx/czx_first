@@ -2,14 +2,19 @@
 #include"Sales_item.h"
 #include<string>
 using namespace std;
-struct Sales_data{
+class Sales_data{
+    friend istream &read(istream &is,Sales_data &item);
+    friend ostream &print(ostream &os,const Sales_data &item);
+    
+  public:
   Sales_data();
+   string isbn()  const {return bookNo;};
+  Sales_data & combine(const Sales_data&);
+   double ave_price() const;
+  private:
   string bookNo;  //编号
   unsigned units_sold; //数量
   double revenue; //总价
-  string isbn() const {return bookNo;};
-  Sales_data & combine(const Sales_data&);
-  double ave_price() const;
   
 };
 Sales_data&  Sales_data::combine(const Sales_data&rhs)
@@ -43,7 +48,7 @@ istream &read(istream &is,Sales_data &item)
 }
 ostream &print(ostream &os,const Sales_data &item)
 {
-    os<<"binahao "<<item.isbn()<<"total  "<<item.units_sold<<"total price "<<item.revenue<<"average"<<item.ave_price();
+    os<<"binahao "<<item.bookNo<<"total  "<<item.units_sold<<"total price "<<item.revenue<<"average"<<item.ave_price();
     return os;
 }
 Sales_data add(const Sales_data &lhs,const Sales_data &rhs)
@@ -60,7 +65,7 @@ int main(int argc,char **argv)
          Sales_data trans;
      while(read(cin,trans))
       {
-          if(total.bookNo==trans.bookNo)
+          if(total.isbn()==trans.isbn())
           {   
               total=add(total,trans);
           }
