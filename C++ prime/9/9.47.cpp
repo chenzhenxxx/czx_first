@@ -11,4 +11,10 @@ int main()
          cout<<s[pos];
          pos++;
      }
+     cout<<endl;
+     pos=0;
+    cout<<"letters:";
+   	while ((pos = s.find_first_not_of(num,pos)) != string::npos)
+		cout<<s[pos];
+		++pos;
 }

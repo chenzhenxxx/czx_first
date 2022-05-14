@@ -109,7 +109,8 @@
         "span": "cpp",
         "syncstream": "cpp",
         "typeindex": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "unistd.h": "c"
     },
     "code-runner.executorMap": {
         "javascript": "node",
