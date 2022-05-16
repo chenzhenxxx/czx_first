@@ -20,9 +20,9 @@ int main()
     for(auto it=m.begin();it!=m.end();it++)
      {
          cout<<it->first<<":"<<endl;
-         for(auto it2=it->second.begin();it2!=it->second.end();it2++)
+         //for(auto it2=it->second.begin();it2!=it->second.end();it2++)
          
-             cout<<(*it2)<<endl;
+             cout<<(it->second)<<endl;
          
      }
 
