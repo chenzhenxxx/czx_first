@@ -1,29 +1,32 @@
-#include<bits/stdc++.h>
-#define LL long long
-#define PB push_back
- 
+#include<iostream>  
+#include<string>  
+#include<fstream>
+#include<list>
+#include<vector> 
+#include<map>  
+#include<set>
+#include<cctype>//ctype无法打开，包含tolower()函数和ispunct函数
+#include<algorithm>
+#include<utility>//保存pair的头文件
+#include<memory>
 using namespace std;
- 
-const int N=1e6+10,mod=1e9+7;
-int n,m;
-int a[N];
-LL s[N];
+int s=1;
+class num
+{
+    public: num(){val=1;}
+     num(const num &m )
+     {
+         val=s++;
+     }
+     int val=1;
+};
+void f(num s)
+{
+    cout<<s.val<<endl;
+}
 int main()
 {
-    for(int i=1;i<N;i++){
-        for(int j=i;j<N;j+=i){
-            if(1ll*i*i<=j)a[j]=i;
-        }
-    }
-    for(int i=1;i<N;i++){
-        s[i]=s[i-1]+(a[i]+i/a[i])/2;
-        s[i]%=mod;
-    }
-    int t;
-    cin>>t;
-    while(t--){
-        scanf("%d",&n);
-        printf("%lld\n",s[n]);
-    }
+    num t1,t2=t1,t3=t2;
+    f(t1);f(t2);f(t3);
     return 0;
 }
