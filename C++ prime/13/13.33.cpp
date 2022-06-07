@@ -42,11 +42,13 @@ pair<string*,string*> StrVec:: __alloc_on_copy(const string* b,const string* e)
 void StrVec:: free (){
     if(elements)
     {
-        for(auto p=first_free;p!=elements;)
-        {
-            alloc.destroy(--p);
-            alloc.deallocate(elements,cap-elements);
-        }
+        //for(auto p=first_free;p!=elements;)
+        //{
+          //  alloc.destroy(--p);
+            // alloc.deallocate(elements,cap-elements);
+        //}
+        for_each(elements,first_free,[this](std::string&rhs) {alloc.destroy(&rhs);});
+        alloc.deallocate(elements,cap-elements);
     }
 
 }
