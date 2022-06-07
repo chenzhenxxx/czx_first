@@ -1,0 +1,3 @@
+/home/chenzhenxxx/czx_first/cmake_test/CMakeFiles/rebuild_cache.dir
+/home/chenzhenxxx/czx_first/cmake_test/CMakeFiles/edit_cache.dir
+/home/chenzhenxxx/czx_first/cmake_test/CMakeFiles/hello.dir
