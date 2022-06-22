@@ -156,9 +156,35 @@ public:
 struct sendd
 {
     ssize_t len;
-    char data[4096];
+    char data[0];
 };
-
+ssize_t readn(int fd,void *buf,int count)
+{
+    int cnt=count;
+    char *p=(char *)buf;
+    while(cnt>0)
+    {
+        int readbyte=read(fd,p,cnt);
+        if(readbyte==0)
+        {
+            printf("peer close \n");
+            break;
+        }
+        else if(readbyte<0)
+        {
+            if(errno==EINTR)
+            {
+                continue;
+            }
+            else
+            return -1;
+        }
+        cnt-=readbyte;
+        p+=readbyte;
+    }
+    return count-cnt;
+}
+pthread_mutex_t mutex;
 int main() {
     // Server 端的监听地址
     auto test = TestInit("127.0.0.1:1234");
@@ -169,7 +195,7 @@ int main() {
     int cfd;
     bzero(&svaddr,sizeof(svaddr));
     svaddr.sin_family=AF_INET;
-    svaddr.sin_port=htons(10000);
+    svaddr.sin_port=htons(10100);
     svaddr.sin_addr.s_addr=htonl(INADDR_ANY);
     bind(sfd,(struct sockaddr *)&svaddr,sizeof(svaddr));
     listen(sfd,10);
@@ -177,12 +203,12 @@ int main() {
      int len=0;
     
      while(1)
-     {    
+     {     pthread_mutex_lock(&mutex);
          int len=0;
-         struct sendd st;
-         memset(&st,0,sizeof(st));
-         
-         int ret=read(cfd,&st.len,4);
+         struct sendd *st;
+         //memset(&st,0,sizeof(st));
+      
+         int ret=readn(cfd,&len,4);
          if(ret==-1)
          {
              perror("read");
@@ -193,9 +219,11 @@ int main() {
              perror("close");
              break;
          }
-        int databyte=ntohl(st.len);
-         int readlen=read(cfd,st.data,databyte);
-         write(STDOUT_FILENO,st.data,databyte);
+        int databyte=ntohl(len);
+        st=(struct sendd *)malloc(sizeof(struct sendd)+sizeof(char)*databyte);
+        st->len=databyte;
+         int readlen=readn(cfd,st->data,databyte);
+         write(STDOUT_FILENO,st->data,databyte);
          printf("readlemn=%d\n",readlen);
          if(readlen!=databyte)
          {    
@@ -207,8 +235,11 @@ int main() {
            perror("read");
            break;
          }
-         test->commit(std::move(st.data));
-         
+         test->commit(std::move(st->data));
+         free(st);
+         //st=NULL;
+         pthread_mutex_unlock(&mutex);
+        
         
      }
      close(cfd);
