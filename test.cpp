@@ -11,8 +11,8 @@
 #include<memory>
 using namespace std;
 int main()
-{
-    string a=(string)123;
-    atoi
+{   char p[20]="hello";
+    string a(p,12);
+    cout<<a;
 
 }
