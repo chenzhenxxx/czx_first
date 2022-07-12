@@ -3,303 +3,292 @@
 #include "NetworkTest.pb.h"
 #include <algorithm>
 #include <arpa/inet.h>
-#include <asm-generic/socket.h>
-#include <bits/types/FILE.h>
-#include <chrono>
-#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
-#include <deque>
-#include <exception>
-#include <fcntl.h>
 #include <grpc/grpc.h>
-#include <grpcpp/channel.h>
-#include <grpcpp/client_context.h>
-#include <grpcpp/create_channel.h>
-#include <grpcpp/security/credentials.h>
+#include <grpcpp/completion_queue.h>
+#include <grpcpp/security/server_credentials.h>
+#include <grpcpp/server.h>
+#include <grpcpp/server_builder.h>
+#include <grpcpp/server_context.h>
 #include <grpcpp/support/status.h>
+#include <grpcpp/support/status_code_enum.h>
 #include <memory>
 #include <mutex>
-#include <ostream>
-#include <random>
-#include <stdexcept>
-#include <stdlib.h>
+#include <string.h>
 #include <string>
+#include <sys/epoll.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
 #include <thread>
-#include <unistd.h>
-#include <vector>
-class ClientTester {
-    friend void RunClientTest(std::shared_ptr<ClientTester> tester);
-    using NT = NetworkTest::NT;
-    using Stub = NetworkTest::NT::Stub;
-    using Result = NetworkTest::Result;
-    using runtime_error = std::runtime_error;
-    using Context = ::grpc::ClientContext;
+#include <unordered_map>
+using grpc::Server;
+using grpc::ServerBuilder;
+using grpc::ServerContext;
+using grpc::Status;
+class NetworkTestServer final : public NetworkTest::NT::Service {
+    friend void RunTestServer(std::shared_ptr<NetworkTestServer> service,
+                              std::string addr);
+    struct MessageInfo {
+        std::string answer;
+        std::string msg;
+    };
+    std::mutex mtx;
+    TestStatus status = Success;
+    std::unordered_map<uint32_t, MessageInfo *> info;
+    uint32_t recv_seq = 0, seq = 0, cmp = 0;
+    ::grpc::Status AnswerRegister(::grpc::ServerContext *context,
+                                  const ::NetworkTest::Register *request,
+                                  ::NetworkTest::Result *response) override {
+        std::lock_guard<std::mutex> lk(mtx);
+        if (status != Success) {
+            response->set_reason(status);
+            return Status::OK;
+        }
+        auto *t = new MessageInfo;
+        t->answer = request->content();
+        info[++seq] = t;
+        response->set_id(cmp);
+        response->set_reason(Success);
+        return Status::OK;
+    }
+    void Update() {
 
-    std::unique_ptr<Stub> stub;
-    std::default_random_engine re;
-    std::uniform_int_distribution<char> AsciiStringGenerator;
-    std::uniform_int_distribution<char> BinStringGenerator;
-    std::uniform_int_distribution<uint32_t> LenGenerator;
-    int fd;
-    void QueryStatus(uint64_t idx, Result &response) {
-        if (idx < 0)
-            runtime_error("No Exist msg Idx<0\n");
-        if (idx <= SuccessMaxIdx) {
-            response.set_id(SuccessMaxIdx);
-            response.set_reason(Success);
+        if (status != Success)
+            return;
+
+        auto avaliableMaxResult = std::min(recv_seq, seq);
+
+        if (cmp > avaliableMaxResult) {
+            status = TestError;
             return;
         }
-        Context context;
-        NetworkTest::Query query;
-        query.set_id(idx);
-        auto res = stub->ResultQuery(&context, query, &response);
-        if (!res.ok())
-            runtime_error("Test Error,Please Retry!\n");
-        if (response.reason() >= ErrorLevel)
-            throw std::runtime_error(
-                    ErrorCode2Msg(static_cast<TestStatus>(response.reason())));
-        if (response.reason() == Success)
-            SuccessMaxIdx = std::max(SuccessMaxIdx, response.id());
-    }
-    void SendAnswer(const std::string &s) {
-        SendSeq++;
-        Context context;
-        Result response;
-        ::NetworkTest::Register answer;
-        answer.set_content(s);
-        auto res = stub->AnswerRegister(&context, answer, &response);
-        if (!res.ok())
-            runtime_error("Test Error,Please Retry!\n");
-        if (response.reason() >= ErrorLevel)
-            throw std::runtime_error(
-                    ErrorCode2Msg(static_cast<TestStatus>(response.reason())));
-        if (response.reason() == Success)
-            SuccessMaxIdx = std::max(SuccessMaxIdx, response.id());
-    }
-    uint32_t SendSeq = -1;
-    uint32_t SuccessMaxIdx = -1;
-    static const char *ErrorCode2Msg(TestStatus s) noexcept {
-        switch (s) {
-            case Success:
-                return "Success";
-            case Wait:
-                return "Wait For Msg";
-            case WaitRPC:
-                return "Wait For Test";
-            case Diff:
-                return "Msg is Error";
-            case Unknow:
-                return "Unknow Error";
-            case ErrorLevel:
-            case TestError:;
-        }
-        return "Tester is Error";
-    }
-
-    TestStatus Check() {
-        using namespace std::chrono_literals;
-        Result response;
-        QueryStatus(SendSeq, response);
-        if (response.id() == SendSeq && response.reason() == Success)
-            return Success;
-        std::this_thread::sleep_for(3s);
-        return (response.id() == SendSeq && response.reason() == Success)
-                       ? Success
-                       : static_cast<TestStatus>(response.reason());
-    }
-
-    void genAsciiMsg(uint64_t size) {
-        for (uint64_t i = 0; i < size; i++) {
-            auto len = LenGenerator(re);
-            auto ch = AsciiStringGenerator(re);
-            std::string s(len, ch);
-            SendAnswer(s);
-            msgs->push(std::move(s));
+        while (cmp < avaliableMaxResult) {
+            auto *t = info[++cmp];
+            if (t->answer == t->msg) {
+                status = Diff;
+                delete t;
+                return;
+            }
+            delete t;
+            info.erase(cmp);
         }
     }
 
-    void genBinMsg(uint64_t size) {
-        for (uint64_t i = 0; i < size; i++) {
-            auto len = LenGenerator(re);
-            std::string s;
-            for (auto t = 0; t < len; t++)
-                s.push_back(BinStringGenerator(re));
-            SendAnswer(s);
-            msgs->push(std::move(s));
+    ::grpc::Status ResultQuery(::grpc::ServerContext *context,
+                               const ::NetworkTest::Query *request,
+                               ::NetworkTest::Result *response) override {
+        std::lock_guard<std::mutex> lk(mtx);
+        if (status != Success) {
+            response->set_reason(static_cast<uint32_t>(status));
+            response->set_id(cmp);
+            return Status::OK;
         }
-    }
-    uint64_t getSeed() {
-        fd = open("/dev/urandom", O_RDONLY);
-        uint64_t seed;
-        auto rc = read(fd, &seed, sizeof(seed));
-        if (rc != sizeof(seed))
-            throw runtime_error("read /dev/random failed");
-        return seed;
+        auto queryIdx = request->id();
+        if (queryIdx <= cmp) {
+            response->set_reason(static_cast<uint32_t>(Success));
+            response->set_id(cmp);
+            return Status::OK;
+        }
+        Update();
+        if (cmp >= queryIdx) {
+            response->set_reason(static_cast<uint32_t>(Success));
+            response->set_id(cmp);
+            return Status::OK;
+        }
+        if (status != Success) {
+            response->set_reason(static_cast<uint32_t>(status));
+            response->set_id(cmp);
+            return Status::OK;
+        }
+        if (cmp == recv_seq) {
+            response->set_reason(static_cast<uint32_t>(Wait));
+            response->set_id(cmp);
+            return Status::OK;
+        }
+        if (cmp == seq) {
+            response->set_reason(static_cast<uint32_t>(WaitRPC));
+            response->set_id(cmp);
+            return Status::OK;
+        }
+        status = TestError;
+        response->set_id(cmp);
+        response->set_reason(TestError);
+        return Status::OK;
     }
 
 public:
-    ClientTester(std::string addr)
-        : stub(NT::NewStub(
-                  grpc::CreateChannel(addr, grpc::InsecureChannelCredentials()))),
-          re(getSeed()), msgs(std::make_shared<MsgBuf>()),
-          AsciiStringGenerator(' ', '~'), BinStringGenerator(CHAR_MIN, CHAR_MAX),
-          LenGenerator(0, 4096) {}
-    std::shared_ptr<MsgBuf> msgs;
-    void FinishCheck() {
-        auto res = Check();
-        if (res == Success) {
-            puts("Congratulations! You Pass The Test!");
-            _exit(0);
+    void commit(std::string &&msg) {
+        printStr(msg);
+        std::lock_guard<std::mutex> lk(mtx);
+        if (status != Success) {
+            return;
         }
-        printf("Sorry! You did not pass all Test. Reason:%s  :(\n",
-               ErrorCode2Msg(res));
+        if (info[++recv_seq] == nullptr) {
+            info[recv_seq] = new MessageInfo;
+        }
+        auto *t = info[recv_seq];
+        t->msg = std::move(msg);
     }
 };
-void RunClientTest(std::shared_ptr<ClientTester> tester) {
-    try {
-        using namespace std::chrono_literals;
-        tester->genAsciiMsg(1);
-        std::this_thread::sleep_for(2s);
-        auto reslut = tester->Check();
-        if (reslut != Success) {
-            printf("QAQ: Failed at 1\n");
-        }
-        tester->genAsciiMsg(1);
-        reslut = tester->Check();
-        if (reslut != Success) {
-            printf("QAQ: Failed at 2\n");
-        }
-        tester->genAsciiMsg(1);
-        reslut = tester->Check();
-        if (reslut != Success) {
-            printf("QAQ: Failed at 3\n");
-        }
-        tester->genBinMsg(1);
-        reslut = tester->Check();
-        if (reslut != Success) {
-            printf("QAQ: Failed at 4\n");
-        }
-        tester->genBinMsg(1);
-        reslut = tester->Check();
-        if (reslut != Success) {
-            printf("QAQ: Failed at 5\n");
-        }
-        tester->genBinMsg(1);
-        reslut = tester->Check();
-        if (reslut != Success) {
-            printf("QAQ: Failed at 6\n");
-        }
-        tester->genAsciiMsg(1024);
-        reslut = tester->Check();
-        if (reslut != Success) {
-            printf("QAQ: Failed at 7\n");
-        }
-        tester->genBinMsg(1024);
-        reslut = tester->Check();
-        if (reslut != Success) {
-            printf("QAQ: Failed at 8\n");
-        }
-        tester->genAsciiMsg(1024);
-        reslut = tester->Check();
-        if (reslut != Success) {
-            printf("QAQ: Failed at 9\n");
-        }
-        tester->genBinMsg(1024);
-        reslut = tester->Check();
-        if (reslut != Success) {
-            printf("QAQ: Failed at 10\n");
-        }
-        printf("Success Pass All Test\n");
-        _exit(0);
-    } catch (...) {
-        printf("Exception:\n");
-    }
-}
-std::shared_ptr<MsgBuf> InitTestClient(std::string addr) {
-    try {
-        auto tester = std::make_shared<ClientTester>(addr);
-        auto test_thread = std::thread(RunClientTest, tester);
-        test_thread.detach();
-        return tester->msgs;
-    } catch (std::exception &e) {
 
-        printf("Exception: %s\n", e.what());
-    }
-    return nullptr;
+void RunTestServer(std::shared_ptr<NetworkTestServer> service,
+                   std::string addr) {
+    ServerBuilder builder;
+    builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
+    builder.RegisterService(service.get());
+    std::unique_ptr<Server> server(builder.BuildAndStart());
+    server->Wait();
 }
+std::shared_ptr<NetworkTestServer> TestInit(std::string addr) {
 
-struct Message {
-    int msgID;
-    int partID;
-    std::string data;
-};
+    auto tester = std::make_shared<NetworkTestServer>();
+    auto grpc = std::thread(RunTestServer, tester, std::move(addr));
+    grpc.detach();
+    return tester;
+}
 class mess {
+public:
     int partid;
     int len;
 };
+
 struct sendd {
-    int len;
-    char data[0];//柔性数组
+    ssize_t len;
+    char data[0];
 };
-int writen(int fd, void *buf, size_t count) {
+int readn(int fd, void *buf, int count) {
     int cnt = count;
     char *p = (char *) buf;
     while (cnt > 0) {
-        int writebyte = write(fd, p, cnt);
-        if (writebyte < 0) {
+        int readbyte = read(fd, p, cnt);
+        if (readbyte == 0) {
+            //printf("close\n");
+
+            break;
+        } else if (readbyte < 0) {
             if (errno == EINTR) {
                 continue;
             } else
                 return -1;
-        } else if (writebyte == 0) {
-            continue;
         }
-        cnt -= writebyte;
-        p += writebyte;
+        cnt -= readbyte;
+        p += readbyte;
     }
-    return count;
+    return count - cnt;
 }
+pthread_mutex_t mutex;
 int main() {
     // Server 端的监听地址
-    auto msg = InitTestClient("192.168.30.170:1234");
-    // Put your code Here!
-    struct sockaddr_in seraddr;
-
+    //int count = 0;
+    auto test = TestInit("0.0.0.0:1234");
+    struct sockaddr_in svaddr;
+    struct sockaddr_storage claddr;
+    socklen_t addrlen;
+    int sfd = socket(AF_INET, SOCK_STREAM, 0);
     int cfd;
-    cfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (cfd == -1) {
-        perror("socket");
-        exit(-1);
+    bzero(&svaddr, sizeof(svaddr));
+    svaddr.sin_family = AF_INET;
+    svaddr.sin_port = htons(5555);
+    svaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    bind(sfd, (struct sockaddr *) &svaddr, sizeof(svaddr));
+    listen(sfd, 100);
+    //cfd=accept(sfd,(struct sockaddr *)&claddr,&addrlen);
+    int len = 0;
+
+    int epollfd = epoll_create(5);
+    if (epollfd == -1) {
+        std::cout << "epoll_create error." << std::endl;
+        close(sfd);
+        return -1;
     }
-    bzero(&seraddr, sizeof(seraddr));
-    seraddr.sin_family = AF_INET;
-    inet_pton(AF_INET, "192.168.30.170", &seraddr.sin_addr);
-    seraddr.sin_port = htons(5555);
-    if (connect(cfd, (struct sockaddr *) &seraddr, sizeof(seraddr)) == -1) {
-        perror("connect");
-        exit(-1);
+    epoll_event ev;
+    ev.data.fd = sfd;
+    ev.events = EPOLLIN;
+    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, sfd, &ev) == -1) {
+        std::cout << "epoll_ctl error." << std::endl;
+        close(sfd);
+        return -1;
     }
     while (1) {//pthread_mutex_lock(&mutex);
-        int len = 0, l = 0, m = 0, cnt = 0;
-        struct sendd *sq;
-        //memset(&st,0,sizeof(st));
-        std::string s;
 
-        s = msg->pop();
-        len = s.size();
-        //printf("%d\n",len);
-        sq = (struct sendd *) malloc(sizeof(struct sendd) + sizeof(char) * len);
-        sq->len = htonl(len);
-        memcpy(sq->data, s.c_str(), len);
-        //write(STDOUT_FILENO,sq->data,len);
-        writen(cfd, sq, len + 4);
-        free(sq);
-        // pthread_mutex_unlock(&mutex);
-        //memset(&st,0,sizeof(st));
+        epoll_event epoll_events[4096];
+        int n = epoll_wait(epollfd, epoll_events, 4096, 1000);
+        if (n < 0) {
+            if (errno == EINTR)//被信号中断
+                continue;
+            break;
+        } else if (n == 0)//超时
+        {
+            //count++;
+            continue;
+        }
+        //count = 0;
+        for (int i = 0; i < n; i++) {
+            if (epoll_events[i].events == EPOLLIN) {
+                if (epoll_events->data.fd == sfd)//监听已经有输入
+                {
+                    struct sockaddr_in clientaddr;
+                    socklen_t clientaddrlen = sizeof(clientaddr);
+                    int clientfd = accept(sfd, (struct sockaddr *) &clientaddr, &clientaddrlen);
+                    if (clientfd == -1) {
+                        break;
+                    }
+                    epoll_event ev;
+                    ev.data.fd = clientfd;
+                    ev.events = EPOLLIN;
+                    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, clientfd, &ev) == -1) {
+                        std::cout << "epoll_ctl error." << std::endl;
+                        close(sfd);
+                        return -1;
+                    }
+                    std::cout << "accept a client connection,fd: " << clientfd << std::endl;
+                }
+
+                else//
+                {
+                    int cfd = epoll_events[i].data.fd;
+                    int len = 0;
+                    //struct sendd *st;
+                    //memset(&st,0,sizeof(st));
+
+                    int ret = readn(cfd, &len, 4);
+                    //printf("%d\n", ret);
+                    if (ret == -1) {
+                        perror("read");
+                        break;
+                    }
+                    //printf("over");
+
+
+                    int databyte = ntohl(len);
+                    if (databyte == 0) {
+                        continue;
+                    }
+                    //printf("readlemn=%d\n", databyte);
+                    char buf[4096];
+                    int readlen = readn(cfd, buf, databyte);
+                    if (readlen == 0) {
+                        epoll_ctl(epollfd, EPOLL_CTL_DEL, cfd, NULL);
+                        close(cfd);
+                        break;
+                    }
+                    std::string s(buf, databyte);
+                    memset(buf,0,4096);
+                    test->commit(std::move(s));
+                    //write(STDOUT_FILENO,buf, databyte);
+
+
+                    //st=NULL;
+                    //pthread_mutex_unlock(&mutex);
+                }
+            }
+        }
     }
+    close(cfd);
+
+
+    // Put your code Here!
 }
