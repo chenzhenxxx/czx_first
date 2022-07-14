@@ -25,13 +25,13 @@
 #include <ostream>
 #include <random>
 #include <stdexcept>
+#include <stdlib.h>
 #include <string>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <thread>
 #include <unistd.h>
 #include <vector>
-#include<stdlib.h>
 class ClientTester {
     friend void RunClientTest(std::shared_ptr<ClientTester> tester);
     using NT = NetworkTest::NT;
@@ -242,46 +242,64 @@ class mess {
     int partid;
     int len;
 };
-struct sendd
-{
-    ssize_t len;
-    char data[4096];
+struct sendd {
+    int len;
+    char data[0];//柔性数组
 };
+int writen(int fd, void *buf, size_t count) {
+    int cnt = count;
+    char *p = (char *) buf;
+    while (cnt > 0) {
+        int writebyte = write(fd, p, cnt);
+        if (writebyte < 0) {
+            if (errno == EINTR) {
+                continue;
+            } else
+                return -1;
+        } else if (writebyte == 0) {
+            continue;
+        }
+        cnt -= writebyte;
+        p += writebyte;
+    }
+    return count;
+}
 int main() {
-   // Server 端的监听地址
-    auto msg = InitTestClient("127.0.0.1:1234");
+    // Server 端的监听地址
+    auto msg = InitTestClient("192.168.30.170:1234");
     // Put your code Here!
     struct sockaddr_in seraddr;
-    int cfd;
-    cfd=socket(AF_INET,SOCK_STREAM,0);
-    if(cfd==-1)
-      {
-          perror("socket");
-          exit(-1);
-      }
-      bzero(&seraddr,sizeof(seraddr));
-      seraddr.sin_family=AF_INET;
-      inet_pton(AF_INET,"127.0.0.1",&seraddr.sin_addr);
-      seraddr.sin_port=htons(10000);
-      if(connect(cfd,(struct sockaddr *)&seraddr,sizeof(seraddr))==-1)
-      {
-          perror("connect");
-          exit(-1)
-;      }
-      while(1)
-      {   int len=0,l=0,m=0,cnt=0;
-          struct sendd st;
-          memset(&st,0,sizeof(st));
-          std::string s;
-          s=msg->pop();
-          len=strlen(s.c_str());
-          printf("%d\n",len);
-          st.len=htonl(len);
-          strcpy(st.data,s.c_str());
-          printf("%s\n",st.data);
-           write(cfd,&st,4+len);
-          memset(&st,0,sizeof(st));
-      }
 
-         
+    int cfd;
+    cfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (cfd == -1) {
+        perror("socket");
+        exit(-1);
+    }
+    bzero(&seraddr, sizeof(seraddr));
+    seraddr.sin_family = AF_INET;
+    inet_pton(AF_INET, "192.168.30.170", &seraddr.sin_addr);
+    seraddr.sin_port = htons(5555);
+    if (connect(cfd, (struct sockaddr *) &seraddr, sizeof(seraddr)) == -1) {
+        perror("connect");
+        exit(-1);
+    }
+    while (1) {//pthread_mutex_lock(&mutex);
+        int len = 0, l = 0, m = 0, cnt = 0;
+        struct sendd *sq;
+        //memset(&st,0,sizeof(st));
+        std::string s;
+
+        s = msg->pop();
+        len = s.size();
+        //printf("%d\n",len);
+        sq = (struct sendd *) malloc(sizeof(struct sendd) + sizeof(char) * len);
+        sq->len = htonl(len);
+        memcpy(sq->data, s.c_str(), len);
+        //write(STDOUT_FILENO,sq->data,len);
+        writen(cfd, sq, len + 4);
+        free(sq);
+        // pthread_mutex_unlock(&mutex);
+        //memset(&st,0,sizeof(st));
+    }
 }
