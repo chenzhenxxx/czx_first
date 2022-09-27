@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cstdio>
-#include<cmath>
+#include <cmath>
 #include <map>
 using namespace std;
 typedef struct stacknode
@@ -13,18 +13,48 @@ typedef struct sstacknode
     struct sstacknode *next;
     char data;
 } sStack, *sStacklink;
-nStack *num;
-sStack *sym;
+
+nStack *num;  //数字栈
+sStack *sym;  //符号栈
 map<char, int> level;
 
-// void InitStack(Stack *top)
-// {
-//     top = (Stack *)malloc(sizeof(Stack));
-//     top->next = NULL;
-//     return;
-// }
+void Push_num(nStack *num, double sum);
+char GetTop(sStack *sym);
+void Push_sym(sStack *sym, char c);
+void Pop_sym();
+double Pop_num();
+double deal(char c);
+void Get_detail();
+void Init();
 
-void Push_num(nStack *num, double sum)
+int main()
+{
+    
+    Init();  //初始
+    Get_detail();//获取数据并处理
+}
+
+void Init() //初始化
+{
+    level['#'] = 0;    //符号优先级
+    level['+'] = 1;
+    level['-'] = 1;
+    level['*'] = 2;
+    level['/'] = 2;
+    level['^'] = 3;
+    level['('] = 4;
+    level[')'] = 4;
+    sym = (sStack *)malloc(sizeof(sStack));
+    sym->next = NULL;
+    num = (nStack *)malloc(sizeof(nStack));
+    num->next = NULL;
+    sStack *p = (sStack *)malloc(sizeof(sStack));
+    p->data = '#';  //先压一个#方便判断结束。
+    p->next = sym->next;
+    sym->next = p;
+}
+
+void Push_num(nStack *num, double sum)  //压数字栈
 {
     nStack *p = (nStack *)malloc(sizeof(nStack));
     p->data = sum;
@@ -32,7 +62,7 @@ void Push_num(nStack *num, double sum)
     num->next = p;
     return;
 }
-char GetTop(sStack *sym)
+char GetTop(sStack *sym)  //获取符号栈栈顶
 {
     if (sym->next == NULL)
         return '?';
@@ -40,7 +70,7 @@ char GetTop(sStack *sym)
         return sym->next->data;
 }
 
-void Push_sym(sStack *sym, char c)
+void Push_sym(sStack *sym, char c)  //压符号栈
 {
     sStack *p = (sStack *)malloc(sizeof(sStack));
     p->data = c;
@@ -88,9 +118,10 @@ double deal(char c)
         break;
     case '/':
         data = y / x;
+
         break;
     case '^':
-        data=pow(y,x);
+        data = pow(y, x);
     }
     return data;
 }
@@ -109,19 +140,19 @@ void Get_detail()
             sum = sum * 10 + s[count] - '0';
             count++;
         }
-        if(s[count]=='.')
-        {   int k=1;
+        if (s[count] == '.')
+        {
+            int k = 1;
             count++;
             while (isdigit(s[count]))
-        {
-            sum = sum + (s[count] - '0')*pow(0.1,k);
-            k++;
-            count++;
-        }
+            {
+                sum = sum + (s[count] - '0') * pow(0.1, k);
+                k++;
+                count++;
+            }
         }
         if (sum != 0)
             Push_num(num, sum);
-        // printf("%d\n",sum);
         if (!isdigit(s[count]))
         {
             char c = GetTop(sym);
@@ -137,27 +168,7 @@ void Get_detail()
                 char c = GetTop(sym);
                 while (c != '(')
                 {
-                    // int x = Pop_num();
-                    // int y = Pop_num();
-
-                    // int data = 0;
-                    // switch (c)
-                    // {
-                    // case '+':
-                    //     data = x + y;
-
-                    //     break;
-                    // case '-':
-                    //     data = y - x;
-                    //     break;
-                    // case '*':
-                    //     data = x * y;
-                    //     break;
-                    // case '/':
-                    //     data = y / x;
-                    //     break;
-                    // }
-                    double data=deal(c);
+                    double data = deal(c);
                     Pop_sym();
 
                     Push_num(num, data);
@@ -169,28 +180,7 @@ void Get_detail()
             }
             else if (level[c] == level[s[count]] && (c == '*' || c == '/' || c == '+' || c == '-'))
             {
-
-                // int x = Pop_num();
-                // int y = Pop_num();
-
-                // int data = 0;
-                // switch (c)
-                // {
-                // case '+':
-                //     data = x + y;
-
-                //     break;
-                // case '-':
-                //     data = y - x;
-                //     break;
-                // case '*':
-                //     data = x * y;
-                //     break;
-                // case '/':
-                //     data = y / x;
-                //     break;
-                // }
-                double data=deal(c);
+                double data = deal(c);
                 Pop_sym();
 
                 Push_num(num, data);
@@ -210,27 +200,8 @@ void Get_detail()
                     continue;
                 }
                 char c = GetTop(sym);
-                // int x = Pop_num();
-                // int y = Pop_num();
 
-                // int data = 0;
-                // switch (c)
-                // {
-                // case '+':
-                //     data = x + y;
-
-                //     break;
-                // case '-':
-                //     data = y - x;
-                //     break;
-                // case '*':
-                //     data = x * y;
-                //     break;
-                // case '/':
-                //     data = y / x;
-                //     break;
-                // }
-                double data=deal(c);
+                double data = deal(c);
                 Pop_sym();
 
                 Push_num(num, data);
@@ -241,37 +212,7 @@ void Get_detail()
                 count++;
             }
         }
-        // if (count >= len + 1)
-        //  break;
     }
-    // if (num->next->next)
-    // {
-    //     printf("输入非法！");
-    // }
-    // else
-    // {
+
     cout << num->next->data << endl;
-    // }
-}
-int main()
-{
-    level['#'] = 0;
-    level['+'] = 1;
-    level['-'] = 1;
-    level['*'] = 2;
-    level['/'] = 2;
-    level['^']=3;
-    level['('] = 4;
-    level[')'] = 4;
-    // InitStack(num);
-    // InitStack(sym);
-    sym = (sStack *)malloc(sizeof(sStack));
-    sym->next = NULL;
-    num = (nStack *)malloc(sizeof(nStack));
-    num->next = NULL;
-    sStack *p = (sStack *)malloc(sizeof(sStack));
-    p->data = '#';
-    p->next = sym->next;
-    sym->next = p;
-    Get_detail();
 }
