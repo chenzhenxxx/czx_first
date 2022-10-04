@@ -7,10 +7,10 @@ typedef struct LList
     struct LList *next;
 } List, *LinkList;
 
-void Init_List(List *head)
+void Init_List(List *head, int q)
 {
     List *tmp = head;
-    for (int i = 2; i <= 20; i++)
+    for (int i = 2; i <= q; i++)
     {
         List *p = (List *)malloc(sizeof(List));
         p->data = i;
@@ -83,17 +83,15 @@ void Print(List *L)
 
 int List_len(List *A)
 {
-   int i=0;
-   List *lnode=A;
-   while(lnode)
-   {
-     i++;
-     lnode=lnode->next;
-   }
-   return i;
+    int i = 0;
+    List *lnode = A;
+    while (lnode)
+    {
+        i++;
+        lnode = lnode->next;
+    }
+    return i;
 }
-
-
 
 int main()
 {
@@ -107,8 +105,22 @@ int main()
     B = (List *)malloc(sizeof(List));
     B->data = 1;
     B->next = NULL;
-    Init_List(A);
-    Init_List(B);
+    printf("请输入A表长度\n");
+    int q;
+    cin >> q;
+    if (q < 0)
+    {
+        printf("长度小于0！");
+         return 0;
+    }
+    Init_List(A, q);
+    printf("请输入B表长度\n");
+    cin >> q;
+    if (q < 0)
+    {
+        printf("长度小于0！"); return 0;
+    }
+    Init_List(B, q);
     len_a = List_len(A);
     len_b = List_len(B);
     printf("请输入要A删除的起始位置\n");
@@ -120,16 +132,16 @@ int main()
     }
     printf("请输入要A删除的长度\n");
     scanf("%d", &len);
-    if (i + len > len_b)
+    if (i + len > len_a+1)
     {
-        cout << "链表越界！" << endl;
+        cout << "A链表越界！" << endl;
         return 0;
     }
     printf("请输入要B插入的起始位置\n");
     scanf("%d", &j);
     if (j > len_b)
     {
-        cout << "起始位置超出链表长度！" << endl;
+        cout << "B起始位置超出链表长度！" << endl;
         return 0;
     }
 

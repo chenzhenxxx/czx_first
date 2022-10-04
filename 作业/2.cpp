@@ -7,12 +7,9 @@ typedef struct LList
     struct LList *next;
 } List, *LinkList;
 
-void Init_List(List *head)
+void Init_List(List *head, int len)
 {
     List *tmp = head;
-    printf("请输入链表长度！\n");
-    int len = 0;
-    cin >> len;
     while (len--)
     {
         int data;
@@ -47,6 +44,22 @@ List *Merge(List *A, List *B)
     C = (List *)malloc(sizeof(List));
     List *c = C;
     int cnt = 0;
+    if (!a)
+    {
+        if (b)
+        {
+            C = B;
+            return C;
+        }
+    }
+    if (!b)
+    {
+        if (a)
+        {
+            C = A;
+            return C;
+        }
+    }
     while (a && b)
     {
         if (cnt % 2 == 0)
@@ -64,7 +77,7 @@ List *Merge(List *A, List *B)
             b = b->next;
         }
     }
-    c->next=b;
+    c->next = b;
     return C;
 }
 
@@ -81,7 +94,7 @@ void Print(List *L)
 }
 int main()
 {
-    int i, len, j;
+    int i, len = 0, j;
     int len_a, len_b;
     List *A;
     List *B;
@@ -90,11 +103,26 @@ int main()
     B = (List *)malloc(sizeof(List));
     A->next = NULL;
     B->next = NULL;
-    Init_List(A);
-    Init_List(B);
+    printf("请输入链表A长度！\n");
+    cin >> len;
+    if (len < 0)
+    {
+        printf("长度负数非法!\n");
+        return 0;
+    }
+    Init_List(A, len);
+    printf("请输入链表B长度！\n");
+    cin >> len;
+    if (len < 0)
+    {
+        printf("长度负数非法!\n");
+        return 0;
+    }
+    Init_List(B, len);
     len_a = List_len(A);
     len_b = List_len(B);
-    cout << len_a << " " << len_b<<endl;
+    cout << "lena:" << len_a << " "
+         << "lenb:" << len_b << endl;
     if (len_a > len_b)
     {
         C = Merge(B, A);

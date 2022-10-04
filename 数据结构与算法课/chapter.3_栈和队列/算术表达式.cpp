@@ -98,7 +98,7 @@ double Pop_num()
     }
     return 0;
 }
-double deal(char c)
+double  deal(char c)
 {
     double x = Pop_num();
     double y = Pop_num();

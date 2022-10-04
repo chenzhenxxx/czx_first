@@ -58,15 +58,15 @@ void Find_x_s(List *head, int n, int k)
 void Find_x_n(List *head, int n, int k)
 {
     List *p = head;
-    List *tmp = head;
-    while (tmp->next != head) //找到尾节点
-    {
-        tmp = tmp->next;
-    }
+    List *tmp = head->next;
+    //while (tmp->next != head) //找到尾节点
+   //{
+      //  tmp = tmp->next;
+   // }
     while (p->data != n)
     {
         tmp = p; //假如数1
-        p = p->next;
+        p = p->prior;
     }
     while (p->prior != p) //只剩她一个
     {
@@ -93,14 +93,25 @@ int main()
     head->data = 1;
     printf("请输入桌子上的人数\n");
     cin >> people;
+    if(people<0)
+    {
+        printf("人数负数非法！\n");
+        return 0;
+    }
     printf("请输入从第几个人开始\n");
     cin >> n;
     if(n>people)
     {
         cout<<"输入错误"<<endl;
+        return 0;
     }
     printf("请输入数到多少出列\n");
     cin >> k;
+    if(k<0)
+    {
+        printf("数字负数非法!\n");
+        return 0;
+    }
     Create_List(head, people);
     printf("请选择顺时针/逆时针(0/1)\n");
     cin>>select;
@@ -108,5 +119,10 @@ int main()
     Find_x_s(head, n, k);
     else if(select==1)
     Find_x_n(head, n, k);
+    else
+    {
+        printf("请输入正确的选择!\n");
+        return 0;
+    }
 
 }
