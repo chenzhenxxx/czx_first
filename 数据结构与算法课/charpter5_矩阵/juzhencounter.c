@@ -15,29 +15,57 @@ typedef struct
     int row, col, nums;
 } TSMarix;
 
-void TransposeTSMatrix()
+void Print(TSMarix C)
 {
+    int t = 1;
+    for (int i = 1; i <= C.row; i++)
+    {
+        for (int j = 1; j <= C.col; j++)
+        {
+            if (t > C.nums)
+            {
+                printf("0 ");
+                continue;
+            }
+            if (C.data[t].row == i && C.data[t].col == j)
+            {
+                printf("%5d", C.data[t].value);
+                t++;
+            }
+            else
+            {
+                printf("%5d",0);
+            }
+        }
+        printf("\n");
+    }
+}
+void Create(TSMarix *A)
+{
+    A->nums = 1;
     int tmp = 0;
-    TSMarix A;
-    TSMarix B;
-    A.nums = 1;
     printf("请输入数组行数：");
-    scanf("%d", &A.row);
+    scanf("%d", &A->row);
     printf("请输入数组列数：");
-    scanf("%d", &A.col);
+    scanf("%d", &A->col);
     printf("请输入数据：！\n");
-    for (int i = 1; i <= A.row; i++)
-        for (int j = 1; j <= A.col; j++)
+    for (int i = 1; i <= A->row; i++)
+        for (int j = 1; j <= A->col; j++)
         {
             scanf("%d", &tmp);
             if (tmp != 0)
             {
-                A.data[A.nums].value = tmp;
-                A.data[A.nums].row = i;
-                A.data[A.nums].col = j;
-                A.nums++;
+                A->data[A->nums].value = tmp;
+                A->data[A->nums].row = i;
+                A->data[A->nums].col = j;
+                A->nums++;
             }
         }
+}
+void TransposeTSMatrix(TSMarix A)
+{
+    int tmp = 0;
+    TSMarix B;
 
     int num[MAXSIZE], pos[MAXSIZE];
     int count = 1;
@@ -66,271 +94,278 @@ void TransposeTSMatrix()
         pos[A.data[count].col]++;
         count++;
     }
-    int m[B.row + 1][B.col + 1];
-    memset(m, 0, sizeof(m));
-    for (int i = 1; i < B.nums; i++)
-    {
-        m[B.data[i].row][B.data[i].col] = B.data[i].value;
-    }
-    for (int i = 1; i <= B.row; i++)
-    {
-        for (int j = 1; j <= B.col; j++)
-        {
-            printf("%2d", m[i][j]);
-        }
-        printf("\n");
-    }
+    Print(B);
 }
-void Add()
-{
-    int row_a, row_b, col_a, col_b;
-    int tmp = 0;
-    printf("请输入A矩阵行数：\n");
-    scanf("%d", &row_a);
-    printf("请输入A矩阵列数:\n");
-    scanf("%d", &col_a);
-    int A[row_a + 1][col_a + 1];
-    printf("请输入A矩阵！\n");
-    for (int i = 1; i <= row_a; i++)
-        for (int j = 1; j <= col_a; j++)
-        {
-            scanf("%d", &A[i][j]);
-        }
-    printf("请输入B矩阵行数：\n");
-    scanf("%d", &row_b);
-    printf("请输入B矩阵列数:\n");
-    scanf("%d", &col_b);
-    if (row_b != row_a || col_a != col_b)
-    {
-        printf("A,B矩阵行列数不一致，无法相加！\n");
-        return;
-    }
-    printf("请输入B矩阵！\n");
-    for (int i = 1; i <= row_b; i++)
-        for (int j = 1; j <= col_b; j++)
-        {
-            scanf("%d", &tmp);
-            A[i][j] += tmp;
-        }
-    printf("A+B=\n");
-    for (int i = 1; i <= row_a; i++)
-    {
-        for (int j = 1; j <= col_a; j++)
-        {
-            printf("%2d", A[i][j]);
-        }
-        printf("\n");
-    }
-}
-void Subtraction()
+void Add(TSMarix A, TSMarix B)
 {
 
-    int row_a, row_b, col_a, col_b;
     int tmp = 0;
-    printf("请输入A矩阵行数：\n");
-    scanf("%d", &row_a);
-    printf("请输入A矩阵列数:\n");
-    scanf("%d", &col_a);
-    int A[row_a + 1][col_a + 1];
-    printf("请输入A矩阵！\n");
-    for (int i = 1; i <= row_a; i++)
-        for (int j = 1; j <= col_a; j++)
-        {
-            scanf("%d", &A[i][j]);
-        }
-    printf("请输入B矩阵行数：\n");
-    scanf("%d", &row_b);
-    printf("请输入B矩阵列数:\n");
-    scanf("%d", &col_b);
-    if (row_b != row_a || col_a != col_b)
+    TSMarix C;
+    C.nums = 1;
+    if (A.row != B.row || A.col != B.row)
     {
-        printf("A,B矩阵行列数不一致，无法相减！\n");
+        printf("两矩阵行列不一致，无法运算!\n");
         return;
     }
-    printf("请输入B矩阵！\n");
-    int B[row_b + 1][col_b + 1];
-    for (int i = 1; i <= row_b; i++)
-        for (int j = 1; j <= col_b; j++)
+    C.col = A.col;
+    C.row = A.row;
+    int i = 1, j = 1;
+    for (i, j; i < A.nums && j < B.nums;)
+    {
+        if (A.data[i].row == B.data[j].row)
         {
-            scanf("%d", &B[i][j]);
+            if (A.data[i].col == B.data[j].col)
+            {
+                C.data[C.nums].col = A.data[i].col;
+                C.data[C.nums].row = A.data[i].row;
+                C.data[C.nums].value = A.data[i].value + B.data[j].value;
+                C.nums++;
+                i++;
+                j++;
+            }
+            else if (A.data[i].col > B.data[j].col)
+            {
+                C.data[C.nums].col = B.data[j].col;
+                C.data[C.nums].row = B.data[j].row;
+                C.data[C.nums].value = B.data[j].value;
+                C.nums++;
+                j++;
+            }
+            else
+            {
+                C.data[C.nums].col = A.data[i].col;
+                C.data[C.nums].row = A.data[i].row;
+                C.data[C.nums].value = A.data[i].value;
+                C.nums++;
+                i++;
+            }
         }
-    int choice = 0;
+        else if (A.data[i].row > B.data[j].row)
+        {
+            C.data[C.nums].col = B.data[j].col;
+            C.data[C.nums].row = B.data[j].row;
+            C.data[C.nums].value = B.data[j].value;
+            C.nums++;
+
+            j++;
+        }
+        else
+        {
+            C.data[C.nums].col = A.data[i].col;
+            C.data[C.nums].row = A.data[i].row;
+            C.data[C.nums].value = A.data[i].value;
+            C.nums++;
+            i++;
+        }
+    }
+    if (i < A.nums)
+    {
+        while (i < A.nums)
+        {
+            C.data[C.nums].col = A.data[i].col;
+            C.data[C.nums].row = A.data[i].row;
+            C.data[C.nums].value = A.data[i].value;
+            C.nums++;
+            i++;
+        }
+    }
+    if (j < B.nums)
+    {
+        while (j < B.nums)
+        {
+            C.data[C.nums].col = B.data[j].col;
+            C.data[C.nums].row = B.data[j].row;
+            C.data[C.nums].value = B.data[j].value;
+            C.nums++;
+            j++;
+        }
+    }
+    Print(C);
+}
+void Subtraction(TSMarix A, TSMarix B)
+{
+    int choice;
     while (1)
     {
         printf("1.A-B\n");
         printf("2.B-A\n");
-
         scanf("%d", &choice);
         if (choice == 1)
         {
-            for (int i = 1; i <= row_a; i++)
-                for (int j = 1; j <= col_a; j++)
-                {
-                    A[i][j] -= B[i][j];
-                }
+            for (int i = 1; i < B.nums; i++)
+            {
+                B.data[i].value = -B.data[i].value;
+            }
+            printf("A-B=\n");
+            Add(A, B);
             break;
         }
         else if (choice == 2)
         {
-            for (int i = 1; i <= row_a; i++)
-                for (int j = 1; j <= col_a; j++)
-                {
-                    B[i][j] -= A[i][j];
-                }
+            for (int i = 1; i < A.nums; i++)
+            {
+                A.data[i].value = -A.data[i].value;
+            }
+            printf("B-A=\n");
+            Add(A, B);
             break;
         }
         else
         {
-            printf("输入非法！请重新输入\n");
-            continue;
+            printf("输入非法!,请重新输入\n");
         }
-    }
-    if (choice == 1)
-    {
-        printf("A-B=\n");
-    }
-    else
-    {
-        printf("B-A=\n");
-    }
-    for (int i = 1; i <= row_a; i++)
-    {
-        for (int j = 1; j <= col_a; j++)
-        {
-            printf("%2d", A[i][j]);
-        }
-        printf("\n");
     }
 }
-void Multiplication()
+int get_value(TSMarix A, int i, int j)
 {
-    int row_a, row_b, col_a, col_b;
     int tmp = 0;
-    printf("请输入A矩阵行数：\n");
-    scanf("%d", &row_a);
-    printf("请输入A矩阵列数:\n");
-    scanf("%d", &col_a);
-    int A[row_a + 1][col_a + 1];
-    printf("请输入A矩阵！\n");
-    for (int i = 1; i <= row_a; i++)
-        for (int j = 1; j <= col_a; j++)
-        {
-            scanf("%d", &A[i][j]);
-        }
-    printf("请输入B矩阵行数：\n");
-    scanf("%d", &row_b);
-    printf("请输入B矩阵列数:\n");
-    scanf("%d", &col_b);
-   
-    printf("请输入B矩阵！\n");
-    int B[row_b + 1][col_b + 1];
-    for (int i = 1; i <= row_b; i++)
-        for (int j = 1; j <= col_b; j++)
-        {
-            scanf("%d", &B[i][j]);
-        }
-    int choice = 0;
-    if (row_a != col_b && row_b != col_a)
+    for (int k = 1; k < A.nums; k++)
     {
-        printf("两矩阵相乘无意义!\n");
-        return;
+        if (A.data[k].row == i && A.data[k].col == j)
+        {
+            tmp = A.data[k].value;
+            break;
+        }
     }
+    return tmp;
+}
+void Multiplication(TSMarix A, TSMarix B)
+{
+    int choice;
+    TSMarix C;
+    C.nums = 1;
     while (1)
     {
         printf("1.A*B\n");
         printf("2.B*A\n");
-         
         scanf("%d", &choice);
         if (choice == 1)
-        {   int C[row_a+1][col_b+1];
-            if (col_a != row_b)
+        {
+            if (A.col != B.row)
             {
-                printf("两矩阵相乘无意义!\n");
-                return;
+                printf("两矩阵行列不同，无法相乘!\n");
+                return ;
             }
-            for(int i=1;i<=row_a;i++)
-            for(int j=1;j<=col_b;j++)
-            {  int sum=0;
-               for(int k=1;k<=col_a;k++)
-               {
-                 sum+=A[i][k]*B[k][j];
-               }
-               C[i][j]=sum;
-            }
-            printf("A*B=\n");
-            for(int i=1;i<=row_a;i++)
+            C.col=B.col;
+            C.row=A.row;
+            for (int i = 1; i <= A.row; i++)
             {
-            for(int j=1;j<=col_b;j++)
-             printf("%d ",C[i][j]);
-             printf("\n");
+                for (int j = 1; j <= B.col; j++)
+                {
+                    int sum = 0;
+                    for (int k = 1; k <= A.col; k++)
+                    {
+                        sum += get_value(A, i, k) * get_value(B, k, j);
+                    }
+                    if (sum != 0)
+                    {
+                        C.data[C.nums].value = sum;
+                        C.data[C.nums].col = j;
+                        C.data[C.nums].row = i;
+                        C.nums++;
+                    }
+                }
             }
-            
+            printf("A*B\n");
+            Print(C);
             break;
         }
-        else if (choice == 2)
-        {    int C[row_b+1][col_a+1];
-            if (col_b != row_a)
+        else if(choice==2)
+        {
+             if (B.col != A.row)
             {
-                printf("两矩阵相乘无意义!\n");
-                return;
+                printf("两矩阵行列不同，无法相乘!\n");
+                return ;
             }
-            for(int i=1;i<=row_b;i++)
-            for(int j=1;j<=col_a;j++)
-            {  int sum=0;
-               for(int k=1;k<=col_a;k++)
-               {
-                 sum+=B[i][k]*A[k][j];
-               }
-               C[i][j]=sum;
+            C.col=A.col;
+            C.row=B.row;
+            for (int i = 1; i <= B.row; i++)
+            {
+                for (int j = 1; j <= A.col; j++)
+                {
+                    int sum = 0;
+                    for (int k = 1; k <= B.col; k++)
+                    {
+                        sum += get_value(B, i, k) * get_value(A, k, j);
+                    }
+                    if (sum != 0)
+                    {
+                        C.data[C.nums].value = sum;
+                        C.data[C.nums].col = j;
+                        C.data[C.nums].row = i;
+                        C.nums++;
+                    }
+                }
             }
             printf("B*A=\n");
-            for(int i=1;i<=row_b;i++)
-            {
-            for(int j=1;j<=col_a;j++)
-             printf("%d ",C[i][j]);
-             printf("\n");
-            }
-
+            Print(C);
             break;
         }
         else
         {
-            printf("输入非法！请重新输入\n");
-            continue;
+            printf("输入非法!请重新输入\n");
+
+
         }
     }
-    
 }
 int main()
 {
 
     while (1)
     {
+         printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        printf("           三元组矩阵的加、减、乘         \n");
+        printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+        printf("           1、矩阵的加法                           \n");
+        printf("           2、矩阵的减法                           \n");
+        printf("           3、矩阵的乘法                           \n");
+        printf("           4、矩阵转置                             \n");
+        printf("           5   退出                                \n");
+        printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
         printf("请输入你的选择：\n");
-        printf("1: 矩阵相加\n");
-        printf("2.矩阵相减\n");
-        printf("3.矩阵相乘\n");
-        printf("4.矩阵转置\n");
-        printf("5.退出！\n");
         int choice;
         scanf("%d", &choice);
         switch (choice)
         {
         case 1:
-            Add();
+            TSMarix A;
+            printf("请输入A矩阵信息\n");
+            Create(&A);
+            TSMarix B;
+            printf("请输入B矩阵信息\n");
+            Create(&B);
+            printf("A+B=\n");
+            Add(A, B);
             break;
         case 2:
-            Subtraction();
+            TSMarix C;
+            printf("请输入C矩阵信息\n");
+            Create(&C);
+            TSMarix D;
+            printf("请输入D矩阵信息\n");
+            Create(&D);
+            Subtraction(C, D);
             break;
         case 3:
-            Multiplication();
+            TSMarix E;
+            printf("请输入E矩阵信息\n");
+            Create(&E);
+            TSMarix F;
+            printf("请输入F矩阵信息\n");
+            Create(&F);
+            Multiplication(E, F);
+
             break;
         case 4:
-            TransposeTSMatrix();
+            TSMarix G;
+            printf("请输入G矩阵信息\n");
+            Create(&G);
+            TransposeTSMatrix(G);
             break;
         case 5:
             return 0;
-        case 6:
+        default:
             printf("输入非法！请重新输入!\n");
             break;
         }
