@@ -14,6 +14,7 @@ struct line
 	struct line *prior; //指向前一个行的指针
 };
 int lnum;
+char filename[512];
 struct line *start;									  //指向线性表中第一行的指针
 struct line *last;									  //指向线性表中最后一行的指针
 struct line *find(int);								  //查找指定行是否存在
@@ -26,6 +27,7 @@ void insert(char str[], int linenum, int position);	  //插入文字到一行的
 void printline(int linenum);						  //打印一行文字
 void deletestr(int linenum, int position, int lenth); //删除一个字符串
 int findstr(char *to_find);							  //查找字符串
+int findstr_pos(char *to_find,int row,int col);       
 int menu_select();									  //显示主菜单
 int menu_select_insert();							  //显示插入功能子菜单
 int menu_select_delete();							  //显示删除功能子菜单
@@ -33,6 +35,7 @@ int menu_select_print();							  //显示打印功能子菜单
 int menu_select_move();								  //显示移动功能子菜单
 void enter(int linenum);							  //插入一行文字
 void enter_empty(int linenum);						  //插入一个空白行
+
 //下列函数是系统主函数，提供系统主界面，通过选择项转入执行插入、删除、查存盘、读人文件等功能的界面。
 int main(void)
 {
@@ -42,6 +45,8 @@ int main(void)
 	int number = 0;
 	start = NULL;
 	last = NULL;
+	printf("请输入要操作的文件完全路径!\n");
+	cin>>filename;
 	load(); //打开文件，初始化线性表
 	do
 	{
@@ -121,12 +126,27 @@ int main(void)
 		case 4: //执行查找功能
 			printf("输入想要查找的字符串：");
 			scanf("%s", str);
-			number = findstr(str);
+			number = findstr_pos(str,1,1);
 			if (number == NOT_FOUND)
 				printf("没有找到");
 			else
-
-				printf("要查找的字符串所在行号:%d，列号:%d\n", lnum, number + 1);
+                {  int tmp_lnum=lnum;
+		           int tmp=number+strlen(str);
+				printf("要查找的字符串所在行号:%d，列号:%d\n", lnum, number);
+				 while((number=findstr_pos(str,lnum,tmp))!=-1) //循环查找
+				 {   
+					 if(tmp_lnum!=lnum) //这次与上次行数不同
+					 { 
+					 number-=(tmp-1);
+					 tmp=number+strlen(str);
+					 }
+					 else
+					 tmp=number+strlen(str);
+                     printf("要查找的字符串所在行号:%d，列号:%d\n", lnum, number);
+					 tmp_lnum=lnum; 
+					 
+				 }
+				}
 			break;
 		case 5: //执行替换功能
 			printf("输入被替换的字符串：");
@@ -185,12 +205,15 @@ int main(void)
 				break;
 			}
 			break;
-		case 7: //执行存盘功能
-			save();
-			load();
+		case 7: //保存
+			save(); //保存
+			load(); //重新刷新打开文本
 			break;
 		case 8: //执行退出功能
 			exit(0);
+			break;
+		default:
+		    printf("输入非法,请重新输入!\n");
 			break;
 		}
 	} while (1);
@@ -200,17 +223,17 @@ int main(void)
 int menu_select()
 {
 	int c;
-	printf("\n\t\t1.插入\n");
-	printf("\t\t2.删除\n");
-	printf("\t\t3.显示\n");
-	printf("\t\t4.查找\n");
-	printf("\t\t5.替换\n");
-	printf("\t\t6.移动\n");
-	printf("\t\t7.保存修改\n");
-	printf("\t\t8.退出\n");
+	printf("\n1.插入字符串\n");
+	printf("2.删除字符串\n");
+	printf("3.显示\n");
+	printf("4.查找字符串\n");
+	printf("5.替换字符串\n");
+	printf("6.移动行\n");
+	printf("7.保存修改\n");
+	printf("8.退出\n");
 	do
 	{
-		printf("\n\n\t\t请按数字选择：");
+		printf("\n\n请按数字选择：");
 		scanf("%d", &c);
 	} while (!(c >= 1 && c <= 9));
 	return (c);
@@ -220,12 +243,12 @@ int menu_select()
 int menu_select_insert()
 {
 	int c;
-	printf("\n\t\t1.插入一行文字\n");
-	printf("\t\t2.插入一段文字\n");
-	printf("\t\t3.返回上级菜单\n");
+	printf("\n1.插入一行文字\n");
+	printf("2.插入一段文字\n");
+	printf("3.返回上级菜单\n");
 	do
 	{
-		printf("\n\n\t\t请按数字选择：");
+		printf("\n\n请按数字选择：");
 		scanf("%d", &c);
 	} while (!(c >= 1 && c <= 3));
 	return (c);
@@ -234,12 +257,12 @@ int menu_select_insert()
 int menu_select_delete()
 {
 	int c;
-	printf("\n\t\t1.删除一行文字\n");
-	printf("\t\t2.删除一段文字\n");
-	printf("\t\t3.返回上级菜单\n");
+	printf("\n1.删除一行文字\n");
+	printf("2.删除一段文字\n");
+	printf("3.返回上级菜单\n");
 	do
 	{
-		printf("\n\n\t\t请按数字选择：");
+		printf("\n\n请按数字选择：");
 		scanf("%d", &c);
 	} while (!(c >= 1 && c <= 3));
 	return (c);
@@ -248,12 +271,12 @@ int menu_select_delete()
 int menu_select_print()
 {
 	int c;
-	printf("\n\t\t1.显示一行\n");
-	printf("\t\t2.全部显示\n");
-	printf("\t\t3.返回上级菜单\n");
+	printf("\n1.显示一行\n");
+	printf("2.全部显示\n");
+	printf("3.返回上级菜单\n");
 	do
 	{
-		printf("\n\n\t\t请按数字选择：");
+		printf("\n\n请按数字选择：");
 		scanf("%d", &c);
 	} while (!(c >= 1 && c <= 3));
 	return (c);
@@ -262,14 +285,14 @@ int menu_select_print()
 int menu_select_move()
 {
 	int c;
-	printf("\n\t\t1.向下移动一行\n");
-	printf("\t\t2.向上移动一行\n");
-	printf("\t\t3.向右移动一列\n");
-	printf("\t\t4.向左移动一列\n");
-	printf("\t\t5.返回上级菜单\n");
+	printf("\n1.向下移动一行\n");
+	printf("2.向上移动一行\n");
+	printf("3.向右移动一列\n");
+	printf("4.向左移动一列\n");
+	printf("5.返回上级菜单\n");
 	do
 	{
-		printf("\n\n\t\t请按数字选择：");
+		printf("\n\n请按数字选择：");
 		scanf("%d", &c);
 	} while (!(c >= 1 && c <= 5));
 	return (c);
@@ -491,6 +514,47 @@ int findstr(char *to_find) //查找文本中第一次出现的字符串位置
 		position = NOT_FOUND;
 	return (position);
 }
+
+int findstr_pos(char *to_find,int row,int col) //查找文本中第一次出现的字符串位置
+{
+	struct line *info;
+	int i = 0, find_len, found = 0, position;
+	char substring[MAX_LEN];
+	info = start;
+	while(info)
+	{
+		if(info->num==row)
+		{
+           break;
+		}
+		info=info->next;
+	}
+	lnum = 0; //匹配到的行号
+	find_len = strlen(to_find);
+	string s1=&info->text[col-1];
+	while (info && !found) //查询
+	{
+		i = 0; //行间循环
+		if ((i = s1.find(to_find)) != -1)
+		{
+			found = 1;
+			lnum = info->num;
+		}
+
+		info = info->next;
+		if(!info)
+		{
+			break;
+		}
+		s1=info->text;
+	}
+	if (found) //查找成功
+		position = col+i;
+	else //查找不成功
+		position = NOT_FOUND;
+	return (position);
+}
+
 //下列函数的功能是查找指定行，如果查找成功返回结点所在的行指针。
 struct line *find(int linenum)
 {
@@ -534,12 +598,12 @@ void save()
 	struct line *info;
 	char *p;
 	FILE *fp;
-	if ((fp = fopen("2.txt", "w")) == NULL)
+	if ((fp = fopen(filename, "w")) == NULL)
 	{
 		printf("\t文件打不开！n");
 		exit(0);
 	}
-	printf("\t正在存入文件！\n");
+	printf("正在存入文件！\n");
 	info = start;
 	while (info)
 	{
@@ -554,18 +618,30 @@ void save()
 
 //下列函数的功能是把文本文件中的内容读入到线性表中。
 void load()
-{
+{   int choice=0;
 	struct line *info, *temp; // info指向当前行，temp指向info的前驱行
 	char c;
 	FILE *fp;	 //文件指针
 	int inct, i; //行计数器
 	temp = NULL;
-	if ((fp = fopen("2.txt", "r")) == NULL)
+	if ((fp = fopen(filename, "r")) == NULL)
 	{
-		printf("\t文件打不开！\n");
+		printf("文件打不开！\n");
+		int choice=0;
+		printf("是否创建文件(1:yes,2:no)!\n");
+		cin>>choice;
+		if(choice==1)
+		{
+			fp=fopen(filename, "wr");
+			char t[10]=" ";
+			fwrite(t,sizeof(char),strlen(t),fp);
+			fclose(fp);
+			fp=fopen(filename,"r");
+		}
+		else
 		exit(0);
 	}
-	printf("\n\t正装入文件！\n");
+	printf("正加载文件！\n");
 	start = (struct line *)malloc(sizeof(struct line)); //动态生成一行的结点空间
 	info = start;
 	inct = 1;
@@ -574,7 +650,7 @@ void load()
 		i = 0;
 		info->text[i] = c;
 		i++;
-		while ((c = fgetc(fp)) != '\n' && info->prior == NULL) //从文件中读取一行字符到线性表中，文件中每一行以\n为结束标
+		while ((c = fgetc(fp)) != '\n'&&c!=EOF && info->prior == NULL) //从文件中读取一行字符到线性表中，文件中每一行以\n为结束标
 		{
 			info->text[i] = c;
 			i++;
@@ -596,4 +672,5 @@ void load()
 	free(info);
 	start->prior = NULL;
 	fclose(fp);
+	printf("加载文件成功！\n");
 }
