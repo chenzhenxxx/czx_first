@@ -3,58 +3,58 @@
 #include <string.h>
 #include <bits/stdc++.h>
 using namespace std;
-#define MAX_LEN 100
+#define MAXLEN 512
 #define NOT_FOUND -1
 //定义行结构体：
 struct line
 {
-	char text[MAX_LEN]; //本行文本
+	char text[MAXLEN]; //数据
 	int num;			//行号
-	struct line *next;	//指向下一个行的指针
-	struct line *prior; //指向前一个行的指针
+	struct line *next;
+	struct line *prior;
 };
-int lnum;
-char filename[512];
-struct line *start;									  //指向线性表中第一行的指针
-struct line *last;									  //指向线性表中最后一行的指针
-struct line *find(int);								  //查找指定行是否存在
-void patchup(int, int);								  //对当前行以后的每行的行号加1或
-void delete_text(int);								  //删除一行文字
-void List();										  //显示文件的全部内容
-void save();										  //保存文件
-void load();										  //打开文件，初始化线性表
+int lnum;			//匹配行
+char filename[512]; //文件名
+struct line *start;
+struct line *last;
+int Menu();
+int Menu_insert();
+int Menu_delete();
+int Menu_print();
+int Menu_move();
+struct line *find(int); //查找指定行是否存在
+void patchup(int, int); //对当前行以后的每行的行号加1
+void delete_text(int);	//删除一行文字
+void List();			//显示文本
+void save();
+void load();										  //加载文件
 void insert(char str[], int linenum, int position);	  //插入文字到一行的中间
 void printline(int linenum);						  //打印一行文字
 void deletestr(int linenum, int position, int lenth); //删除一个字符串
 int findstr(char *to_find);							  //查找字符串
-int findstr_pos(char *to_find,int row,int col);       
-int menu_select();									  //显示主菜单
-int menu_select_insert();							  //显示插入功能子菜单
-int menu_select_delete();							  //显示删除功能子菜单
-int menu_select_print();							  //显示打印功能子菜单
-int menu_select_move();								  //显示移动功能子菜单
-void enter(int linenum);							  //插入一行文字
-void enter_empty(int linenum);						  //插入一个空白行
+int findstr_pos(char *to_find, int row, int col);
+void enter(int linenum);	   //插入一行文字
+void enter_empty(int linenum); //插入一个空白行
 
-//下列函数是系统主函数，提供系统主界面，通过选择项转入执行插入、删除、查存盘、读人文件等功能的界面。
+//主界面
 int main(void)
 {
-	char str[MAX_LEN];
+	char str[MAXLEN];
 	int choice;
 	int linenum = 1;
 	int number = 0;
 	start = NULL;
 	last = NULL;
 	printf("请输入要操作的文件完全路径!\n");
-	cin>>filename;
+	cin >> filename;
 	load(); //打开文件，初始化线性表
 	do
 	{
-		choice = menu_select();
+		choice = Menu();
 		switch (choice)
 		{
-		case 1:							   //插入
-			choice = menu_select_insert(); //显示插入子菜单
+		case 1: //插入
+			choice = Menu_insert();
 			switch (choice)
 			{
 			case 1: //插入一行
@@ -76,8 +76,8 @@ int main(void)
 				break;
 			}
 			break;
-		case 2:							   //删除
-			choice = menu_select_delete(); // 删除子菜单
+		case 2: //删除
+			choice = Menu_delete();
 			switch (choice)
 			{
 			case 1: //删除指定行
@@ -107,8 +107,8 @@ int main(void)
 				break;
 			}
 			break;
-		case 3:							  //执行打印功能
-			choice = menu_select_print(); //显示子菜单
+		case 3: //打印
+			choice = Menu_print();
 			switch (choice)
 			{
 			case 1: //打印某一行
@@ -123,44 +123,45 @@ int main(void)
 				break;
 			}
 			break;
-		case 4: //执行查找功能
+		case 4: //查找
 			printf("输入想要查找的字符串：");
 			scanf("%s", str);
-			number = findstr_pos(str,1,1);
+			number = findstr_pos(str, 1, 1);
 			if (number == NOT_FOUND)
 				printf("没有找到");
 			else
-                {  int tmp_lnum=lnum;
-		           int tmp=number+strlen(str);
+			{
+				int tmp_lnum = lnum;
+				int tmp = number + strlen(str);
 				printf("要查找的字符串所在行号:%d，列号:%d\n", lnum, number);
-				 while((number=findstr_pos(str,lnum,tmp))!=-1) //循环查找
-				 {   
-					 if(tmp_lnum!=lnum) //这次与上次行数不同
-					 { 
-					 number-=(tmp-1);
-					 tmp=number+strlen(str);
-					 }
-					 else
-					 tmp=number+strlen(str);
-                     printf("要查找的字符串所在行号:%d，列号:%d\n", lnum, number);
-					 tmp_lnum=lnum; 
-					 
-				 }
+				while ((number = findstr_pos(str, lnum, tmp)) != -1) //循环查找
+				{
+					if (tmp_lnum != lnum) //这次与上次行数不同
+					{
+						number -= (tmp - 1);
+						tmp = number + strlen(str);
+					}
+					else
+						tmp = number + strlen(str);
+					printf("要查找的字符串所在行号:%d，列号:%d\n", lnum, number);
+					tmp_lnum = lnum;
 				}
+			}
 			break;
-		case 5: //执行替换功能
+		case 5: //替换
 			printf("输入被替换的字符串：");
 			scanf("%s", str);
 			number = findstr(str);
 			if (number == NOT_FOUND)
 				printf("没有找到");
 			else
-			{    char tmp[MAX_LEN];
+			{
+				char tmp[MAXLEN];
 				deletestr(lnum, number, strlen(str));
 				printf("要替换的字符串：");
-				scanf("%s",&tmp);
+				scanf("%s", &tmp);
 				insert(tmp, lnum, number + 1);
-				while ((number = findstr(str) )!= -1)
+				while ((number = findstr(str)) != -1) //一直替换
 				{
 					deletestr(lnum, number, strlen(str));
 					insert(tmp, lnum, number + 1);
@@ -168,8 +169,8 @@ int main(void)
 			}
 			break;
 
-		case 6:							 //执行移动功能
-			choice = menu_select_move(); //移动子菜单
+		case 6:					  //移动
+			choice = Menu_move(); //移动子菜单
 			switch (choice)
 			{
 			case 1: // 向下移动一行
@@ -205,7 +206,7 @@ int main(void)
 				break;
 			}
 			break;
-		case 7: //保存
+		case 7:		//保存
 			save(); //保存
 			load(); //重新刷新打开文本
 			break;
@@ -213,14 +214,14 @@ int main(void)
 			exit(0);
 			break;
 		default:
-		    printf("输入非法,请重新输入!\n");
+			printf("输入非法,请重新输入!\n");
 			break;
 		}
 	} while (1);
 	return 0;
 }
-//下列函数是主菜单功能的提示界面，其功能是说明主菜单中选项
-int menu_select()
+//主菜单
+int Menu()
 {
 	int c;
 	printf("\n1.插入字符串\n");
@@ -239,8 +240,8 @@ int menu_select()
 	return (c);
 }
 
-//下列函数是插入子菜单功能的提示界面，其功能是说明在插入菜单下选项的含义。
-int menu_select_insert()
+//插入菜单
+int Menu_insert()
 {
 	int c;
 	printf("\n1.插入一行文字\n");
@@ -253,8 +254,8 @@ int menu_select_insert()
 	} while (!(c >= 1 && c <= 3));
 	return (c);
 }
-//下列函数是删除子菜单功能的提示界面，其功能是说明在删除子菜单下选项的含义。
-int menu_select_delete()
+//删除菜单
+int Menu_delete()
 {
 	int c;
 	printf("\n1.删除一行文字\n");
@@ -267,8 +268,8 @@ int menu_select_delete()
 	} while (!(c >= 1 && c <= 3));
 	return (c);
 }
-//下列函数是显示子菜单功能的提示界面，其功能是说明在显示子菜单下选项的含义
-int menu_select_print()
+//显示菜单
+int Menu_print()
 {
 	int c;
 	printf("\n1.显示一行\n");
@@ -281,8 +282,8 @@ int menu_select_print()
 	} while (!(c >= 1 && c <= 3));
 	return (c);
 }
-//下列函数是移动子菜单功能的提示界面，其功能是说明在移动子菜单下选项的含义
-int menu_select_move()
+//移动菜单
+int Menu_move()
 {
 	int c;
 	printf("\n1.向下移动一行\n");
@@ -297,7 +298,7 @@ int menu_select_move()
 	} while (!(c >= 1 && c <= 5));
 	return (c);
 }
-//下列函数的功能是在指定的行号 linenum处插入一行文字。
+//在指定的行号 linenum处插入一行文字。
 void enter(int linenum)
 {
 	struct line *info, *q, *p;
@@ -347,8 +348,7 @@ void enter(int linenum)
 	}
 }
 
-//下列函数是为其他功能提供的一个辅助函数，它的功能是当文本内容插在文件中间时
-//其下面的内容的行号必须增加1，而删除时，被删除的文本后面的行号必减1.
+//更新文本行号
 void patchup(int n, int incr)
 {
 	struct line *i;
@@ -360,7 +360,7 @@ void patchup(int n, int incr)
 		i = i->next;
 	}
 }
-//下列函数的功能是在指定行处插入一个空白行。
+//插入一个空白行。
 void enter_empty(int linenum)
 {
 	struct line *info, *p;
@@ -398,13 +398,13 @@ void enter_empty(int linenum)
 		printf("该行不存在");
 }
 
-//插入到任意位置，要是插入位置和现有位置中间有间隔，会补全空格
+//插入到任意位置
 void insert(char str[], int linenum, int position)
 {
 	struct line *info;
 	int len, i;
 	int lenth;
-	char rest_str[MAX_LEN], nostr[2] = {" "};
+	char rest_str[MAXLEN], nostr[2] = {" "};
 	info = start;
 	while (info && info->num != linenum) //查询要插入的行
 	{
@@ -433,11 +433,11 @@ void insert(char str[], int linenum, int position)
 	}
 }
 
-//下列函数的功能是删除指定行、指定位置、长度为 lenth的一段文字。
+//删除特定位置
 void deletestr(int linenum, int position, int lenth)
 {
 	struct line *info;
-	char rest_str[MAX_LEN];
+	char rest_str[MAXLEN];
 	info = find(linenum);
 	if (info == NULL)
 		printf("该行没有字符！n");
@@ -452,7 +452,7 @@ void deletestr(int linenum, int position, int lenth)
 		}
 	}
 }
-//下列函数的功能是删除指定行号 lineup的文字。
+//删除指定行号
 void delete_text(int linenum)
 {
 	struct line *info, *p;
@@ -488,12 +488,12 @@ void delete_text(int linenum)
 		}
 	}
 }
-
-int findstr(char *to_find) //查找文本中第一次出现的字符串位置
+//查找文本中第一次出现的字符串位置
+int findstr(char *to_find)
 {
 	struct line *info;
 	int i = 0, find_len, found = 0, position;
-	char substring[MAX_LEN];
+	char substring[MAXLEN];
 	info = start;
 	lnum = 0; //匹配到的行号
 	find_len = strlen(to_find);
@@ -514,24 +514,24 @@ int findstr(char *to_find) //查找文本中第一次出现的字符串位置
 		position = NOT_FOUND;
 	return (position);
 }
-
-int findstr_pos(char *to_find,int row,int col) //查找文本中第一次出现的字符串位置
+//循环查找字符串出现的位置
+int findstr_pos(char *to_find, int row, int col)
 {
 	struct line *info;
 	int i = 0, find_len, found = 0, position;
-	char substring[MAX_LEN];
+	char substring[MAXLEN];
 	info = start;
-	while(info)
+	while (info)
 	{
-		if(info->num==row)
+		if (info->num == row)
 		{
-           break;
+			break;
 		}
-		info=info->next;
+		info = info->next;
 	}
 	lnum = 0; //匹配到的行号
 	find_len = strlen(to_find);
-	string s1=&info->text[col-1];
+	string s1 = &info->text[col - 1];
 	while (info && !found) //查询
 	{
 		i = 0; //行间循环
@@ -542,20 +542,20 @@ int findstr_pos(char *to_find,int row,int col) //查找文本中第一次出现�
 		}
 
 		info = info->next;
-		if(!info)
+		if (!info)
 		{
 			break;
 		}
-		s1=info->text;
+		s1 = info->text;
 	}
 	if (found) //查找成功
-		position = col+i;
+		position = col + i;
 	else //查找不成功
 		position = NOT_FOUND;
 	return (position);
 }
 
-//下列函数的功能是查找指定行，如果查找成功返回结点所在的行指针。
+//查找指定行
 struct line *find(int linenum)
 {
 	struct line *info;
@@ -570,7 +570,7 @@ struct line *find(int linenum)
 	return (info);
 }
 
-//下列函数的功能是显示指定行
+//显示指定行
 void printline(int linenum)
 {
 	struct line *info;
@@ -580,7 +580,7 @@ void printline(int linenum)
 	else
 		printf("该行不存在");
 }
-//下列函数的功能是显示线性表中的所有文本
+//显示线性表中的所有文本
 void List()
 {
 	struct line *info;
@@ -592,7 +592,7 @@ void List()
 	}
 	printf("\n\n");
 }
-//下列函数的功能是把线性表中的所有文字保存到文件中
+//保存到文件当中
 void save()
 {
 	struct line *info;
@@ -616,9 +616,10 @@ void save()
 	fclose(fp);
 }
 
-//下列函数的功能是把文本文件中的内容读入到线性表中。
+//把文本文件中的内容读入到线性表中。
 void load()
-{   int choice=0;
+{
+	int choice = 0;
 	struct line *info, *temp; // info指向当前行，temp指向info的前驱行
 	char c;
 	FILE *fp;	 //文件指针
@@ -627,19 +628,19 @@ void load()
 	if ((fp = fopen(filename, "r")) == NULL)
 	{
 		printf("文件打不开！\n");
-		int choice=0;
+		int choice = 0;
 		printf("是否创建文件(1:yes,2:no)!\n");
-		cin>>choice;
-		if(choice==1)
+		cin >> choice;
+		if (choice == 1)
 		{
-			fp=fopen(filename, "wr");
-			char t[10]=" ";
-			fwrite(t,sizeof(char),strlen(t),fp);
+			fp = fopen(filename, "wr");
+			char t[10] = " ";
+			fwrite(t, sizeof(char), strlen(t), fp); //避免文件是空
 			fclose(fp);
-			fp=fopen(filename,"r");
+			fp = fopen(filename, "r");
 		}
 		else
-		exit(0);
+			exit(0);
 	}
 	printf("正加载文件！\n");
 	start = (struct line *)malloc(sizeof(struct line)); //动态生成一行的结点空间
@@ -650,7 +651,7 @@ void load()
 		i = 0;
 		info->text[i] = c;
 		i++;
-		while ((c = fgetc(fp)) != '\n'&&c!=EOF && info->prior == NULL) //从文件中读取一行字符到线性表中，文件中每一行以\n为结束标
+		while ((c = fgetc(fp)) != '\n' && c != EOF && info->prior == NULL) //从文件中读取一行字符到线性表中，文件中每一行以\n为结束标
 		{
 			info->text[i] = c;
 			i++;
