@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
+#include<string.h>
 typedef struct ht
 {
     int weight;
@@ -117,11 +118,16 @@ int main()
     char data;
     printf("输入元素个数:");
     scanf("%d", &num);
+    if(num<=0)
+    {
+        printf("输入非法！");
+        return 0;
+    }
     getchar();
     for (i = 0; i < num; i++)
     {
         printf("第%d个元素的字符:", i + 1);
-        scanf("%c", &data);
+        scanf("%c", &data);   
         getchar();
         printf("第%d个元素的权重:", i + 1);
         scanf("%d", &w);

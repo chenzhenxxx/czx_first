@@ -148,10 +148,27 @@ void LevelOrder(BiTree root)//层序遍历
 
      }
 }
+int PostTreeDepth(BiTree root)
+{
+    int hl,hr,h;
+    if(root==NULL)
+    return 0;
+    else
+    {
+        hl=PostTreeDepth(root->Lchild);
+        hr=PostTreeDepth(root->Rchild);
+        h=(hl>hr?hl:hr)+1;
+        return h;
+    }
+
+}
 int main()
 {
     BiTree root;
     CreateBiTree(&root);
+    printf("二叉树高度:");
+    printf("%d",PostTreeDepth(root));
+    printf("\n");
     printf("先序：");
     PreOrder(root);
     printf("\n");
@@ -174,4 +191,5 @@ int main()
     printf("\n");
     printf("层序：");
     LevelOrder(root);
+    printf("\n");
 }
