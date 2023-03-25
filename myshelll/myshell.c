@@ -4,12 +4,11 @@ int cnt=1;
 char *arglist[256];
 char cdform[100][100]; //用来 cd -
 int cd_cnt=0;
-
 int main(int argc,char **argv)
 {   
     strcpy(cdform[0],"/home/chenzhenxin/");
     char **arg=NULL;
-  signal(SIGINT, SIG_IGN);  //屏蔽信号
+    signal(SIGINT, SIG_IGN);  //屏蔽信号
     while(1)
     { 
       cnt=0;
@@ -336,25 +335,27 @@ void cmd_cd(char *arglist[256])
         return;
     }
 
-    if(strcmp(arglist[1],"-")!=0&&strcmp(arglist[1],"~")!=0) 
-    {     char buf[100];
+    // if(strcmp(arglist[1],"-")!=0&&strcmp(arglist[1],"~")!=0) 
+    //{     
+        char buf[100];
           getcwd(buf,sizeof(buf));
           strcpy(cdform[++cd_cnt],buf);
-    }
+    //}
 
      if(strcmp(arglist[1],"~")==0)
     {
-        strcpy(arglist[1], "/home/chenzhenxin/");
+        strcpy(arglist[1], "/home/chenzhenxxx/");
     }
 
      else if(strcmp(arglist[1],"-")==0)
-    {   if(cd_cnt>0)
-        {
-        strcpy(arglist[1],cdform[cd_cnt]);
-        }
-        else 
-        strcpy(arglist[1],cdform[0]);
-        cd_cnt--;
+    {   
+        // if(cd_cnt>0)
+        // {
+        strcpy(arglist[1],cdform[cd_cnt-1]);
+        // }
+        // else 
+        // strcpy(arglist[1],cdform[0]);
+        // cd_cnt--;
     }
     
     if(chdir(arglist[1])==-1)
