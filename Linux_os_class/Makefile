@@ -1,4 +1,4 @@
-obj-m := 
+obj-m := task_struct_fields.o
 CURRENT_PATH := $(shell pwd)
 KERNEL_PATH := /usr/src/linux
 all:

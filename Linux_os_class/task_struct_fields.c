@@ -1,118 +1,53 @@
-#include <linux/bpf.h>
-#include <linux/version.h>
-#include <linux/kprobes.h>
-#include <linux/sched.h>
-
-#define MAX_FIELD_NAME_LEN 64
-#define MAX_FIELD_SIZE 64
-
-#define FIELD_OFFSET(type, field) ((unsigned long)(&((type *)0)->field))
-
-struct field_desc {
-    char name[MAX_FIELD_NAME_LEN];
-    unsigned int size;
-    unsigned int offset;
-};
-
-struct task_struct_fields {
-    struct field_desc fields[10];
-};
-
-static struct task_struct_fields fields = {
-    {
-        {"pid", sizeof(pid_t), FIELD_OFFSET(struct task_struct, pid)},
-        {"tgid", sizeof(pid_t), FIELD_OFFSET(struct task_struct, tgid)},
-        {"comm", sizeof(char[MAX_COMM_LEN]), FIELD_OFFSET(struct task_struct, comm)},
-        {"state", sizeof(long), FIELD_OFFSET(struct task_struct, state)},
-        {"prio", sizeof(int), FIELD_OFFSET(struct task_struct, prio)},
-        {"static_prio", sizeof(int), FIELD_OFFSET(struct task_struct, static_prio)},
-        {"normal_prio", sizeof(int), FIELD_OFFSET(struct task_struct, normal_prio)},
-        {"policy", sizeof(int), FIELD_OFFSET(struct task_struct, policy)},
-        {"mm", sizeof(struct mm_struct *), FIELD_OFFSET(struct task_struct, mm)},
-        {"stack", sizeof(struct thread_info *), FIELD_OFFSET(struct task_struct, stack)},
-    }
-};
-
-static int kprobe__task_switch(struct pt_regs *ctx, struct task_struct *prev)
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/sched.h>   //task结构体
+#include <linux/fdtable.h>      //files
+#include <linux/fs_struct.h>   //fs
+#include <linux/mm_types.h>   //打印内存信息
+#include <linux/init_task.h>   
+#include <linux/types.h>
+#include <linux/atomic.h>
+ 
+MODULE_LICENSE("GPL");  //许可证
+ 
+//入口函数
+static int __init print_pcb(void)    //init宏是由init.h文件所支持
 {
-    char fmt[MAX_FIELD_NAME_LEN * 2 + 16];
-    char buf[MAX_FIELD_SIZE];
-    int i, ret;
-
-    for (i = 0; i < 10; i++) {
-        struct field_desc *field = &fields.fields[i];
-        snprintf(fmt, sizeof(fmt), "%s: %%#lx\\n", field->name);
-        ret = bpf_probe_read(buf, field->size, (void *)((unsigned long)prev + field->offset));
-        if (ret == 0) {
-            printk(fmt, *((unsigned long *)buf));
+        struct task_struct *task,*p;
+        struct list_head *pos;   //双向链表
+        int count=0;          //统计当前系统进程一共有多少个
+ 
+        printk("begin...\n");
+ 
+        //对链表遍历时，希望从第一个开始
+        task=&init_task;  //指向0号进程pcb
+ 
+        list_for_each(pos,&task->tasks) //遍历操作，使用pos指向，传入的参数task指向tasks字段.0号进程的tasks进行遍历。tasks将所有的进程连在一块。
+        {
+                p=list_entry(pos,struct task_struct,tasks);    //找到一个节点，就可以用这个节点的tasks字段，找到这个结构体的地址.对应的字段tasks
+                //此时的p指针已经指向task_struct结构体的首部，后面就可以通过p指针进行操作
+                count++;  //找到一个进程，自加
+                printk("\n\n");
+                printk("pid: %d; state: %d; prior: %d; static_pri: %d; parent_pid: %d; count: %d; umask: %d; utime: %llu; stime: %llu;mm: %p\n",p->pid,p->__state,p->prio,p->static_prio,(p->parent)->pid,atomic_read(&(p->files)->count),(p->fs)->umask,p->utime,p->stime,p->mm);
+        //linux中内核线程的mm是空的，要对它进行打印，就会出错，指针错误
+        if((p->mm)!=NULL)
+                printk("Total_vm: %ld",(p->mm)->total_vm);      //线性区总的页数
+ 
         }
-    }
-
-    return 0;
+ 
+        printk("进程的个数:%d\n",count);
+ 
+        return 0;
 }
-
-static int kprobe__task_exit(struct pt_regs *ctx, struct task_struct *prev)
+ 
+static void __exit exit_pcb(void)    //出口函数
 {
-    char fmt[MAX_FIELD_NAME_LEN * 2 + 16];
-    char buf[MAX_FIELD_SIZE];
-    int i, ret;
-
-    for (i = 0; i < 10; i++) {
-        struct field_desc *field = &fields.fields[i];
-        snprintf(fmt, sizeof(fmt), "%s: %%#lx\\n", field->name);
-        ret = bpf_probe_read(buf, field->size, (void *)((unsigned long)prev + field->offset));
-        if (ret == 0) {
-            printk(fmt, *((unsigned long *)buf));
-        }
-    }
-
-    return 0;
+        printk("Exiting...\n");
 }
+ 
+// 指明入口点与出口点，入口/出口点是由module.h支持的
+ 
+module_init(print_pcb);
+module_exit(exit_pcb);
 
-static struct kprobe task_switch_kp = {
-    .symbol_name = "finish_task_switch",
-    .pre_handler = kprobe__task_switch,
-};
-
-static struct kprobe task_exit_kp = {
-    .symbol_name = "do_exit",
-    .pre_handler = kprobe__task_exit,
-};
-
-static int __init task_struct_fields_init(void)
-{
-    int ret;
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-    task_switch_kp.flags |= KPROBE_FLAG_EXTENDED_REGS;
-    task_exit_kp.flags |= KPROBE_FLAG_EXTENDED_REGS;
-#endif
-
-    ret = register_kprobe(&task_switch_kp);
-    if (ret < 0) {
-        printk("Error registering task_switch kprobe\n");
-        return ret;
-    }
-
-    ret = register_kprobe(&task_exit_kp);
-    if (ret < 0) {
-        printk("Error registering task_exit kprobe\n");
-        unregister_kprobe(&task_switch_kp);
-        return ret;
-    }
-
-    printk("task_struct_fields module loaded\n");
-
-    return 0;
-}
-
-static void __exit task_struct_fields_exit(void)
-{
-    unregister_kprobe(&task_switch_kp);
-    unregister_kprobe(&task_exit_kp);
-    printk("task_struct_fields module unloaded\n");
-}
-
-module_init(task_struct_fields_init);
-module_exit(task_struct_fields_exit);
-MODULE_LICENSE("GPL");
