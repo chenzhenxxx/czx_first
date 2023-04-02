@@ -67,15 +67,15 @@
 
 
 //4
-#include<iostream>
-using namespace std;
-int main()
-{
-	char * name=new char[20];
-	cout<<"please input your name"<<endl;
-	cin>> name;
-	cout<<"hello "<<name <<endl;
-}
+// #include<iostream>
+// using namespace std;
+// int main()
+// {
+// 	char * name=new char[20];
+// 	cout<<"please input your name"<<endl;
+// 	cin>> name;
+// 	cout<<"hello "<<name <<endl;
+// }
 
 
 // #include <iostream>
