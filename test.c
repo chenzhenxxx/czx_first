@@ -2,5 +2,7 @@
 #include<stdio.h>
 int main()
 {
-     printf("x=%d y=%d", 3);
+     char c=65;
+     char d=char(1);
+     printf("%c %c",c,d);
 }

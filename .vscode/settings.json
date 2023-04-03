@@ -110,7 +110,12 @@
         "syncstream": "cpp",
         "typeindex": "cpp",
         "valarray": "cpp",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "expected": "cpp",
+        "spanstream": "cpp",
+        "stacktrace": "cpp",
+        "*.ipp": "c",
+        "ptrace.h": "c"
     },
     "code-runner.executorMap": {
         "javascript": "node",
@@ -163,5 +168,6 @@
         "fortran-modern": "cd $dir && gfortran $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
         "fortran_fixed-form": "cd $dir && gfortran $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt",
         "fortran": "cd $dir && gfortran $fileName -o $fileNameWithoutExt && $dir$fileNameWithoutExt"
-    }
+    },
+    "cmake.sourceDirectory": "${workspaceFolder}/cmake_test"
 }

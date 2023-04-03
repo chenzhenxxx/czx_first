@@ -4,6 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "/usr/include"
+                //"/usr/lib/modules/6.2.9-arch1-1/build/include"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",
