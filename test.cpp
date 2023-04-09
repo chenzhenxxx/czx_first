@@ -1,34 +1,36 @@
-#include <iostream>
-#include <algorithm>
-using namespace std;
 
-int P;
-char w[36];
-
-string change(int n)
+void Student::printPair()
 {
-    string s;
-    while(n)
-    {
-        s += w[n % P];
-        n /= P;
-    }
-    reverse(s.begin(), s.end());
-    return s;
+    if(pair!=NULL)
+  cout<<this->name<<":"<<this->pair->name<<endl;
 }
 
-int main()
-{
-    cin >> P;
-    
-    for (int i = 0; i <= 9; i ++) w[i] = (char)('0' + i);
-    for (int i = 10; i <= 35; i ++) w[i] = (char)('A' + i - 10);
-    
-    for (int i = 1; i < P; i ++)
+void Student::addPair()
+{ 
+  if(this->pair!=NULL)
+  return;  
+  
+  for(int i=0;i<2;i++)
+  {
+  
+   if(this->welcome[i]->pair!=NULL)continue;
+  
+   for(int j=0;j<2;j++)
+   {
+     if(this->welcome[i]->welcome[j]==this) 
     {
-        for (int j = 1; j <= i; j ++) cout << w[i] << '*' << w[j] << '=' << change(i * j) << ' ';
-        cout << endl;
-    }
+     this->pair=this->welcome[i];
+     this->welcome[i]->pair=this;
+     return;
+    } 
     
-    return 0;
+   }  
+   if(this->welcome[i]->welcome[0]->pair!=NULL && this->welcome[i]->welcome[1]->pair!=NULL && this->welcome[i]->pair==NULL)
+       {
+         this->pair=this->welcome[i];
+         this->welcome[i]->pair=this;
+          return;
+       }
+  }
+ 
 }
