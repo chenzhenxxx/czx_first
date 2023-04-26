@@ -1,26 +1,17 @@
 #include <iostream>
 using namespace std;
 
-class MyClass {
+class A {
 public:
-    MyClass() {
-        ++count;
-    }
-    ~MyClass() {
-        --count;
-    }
-    static int getCount() {
-        return count;
-    }
-private:
-    static int count;
+    A() {     cout << "1";    }
+    ~A() {    cout << "2";    }
 };
-int MyClass::count = 0;
+class B: public A {
+public:
+    B() {    cout << "3";    }
+    ~B() {    cout << "4";    }
+};
 int main() {
-    MyClass obj;
-    cout << obj.getCount();
-    MyClass obj2;
-    cout << MyClass::getCount();
-    cout << obj2.getCount();
+    B b;
     return 0;
 }

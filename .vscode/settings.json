@@ -115,7 +115,8 @@
         "spanstream": "cpp",
         "stacktrace": "cpp",
         "*.ipp": "c",
-        "ptrace.h": "c"
+        "ptrace.h": "c",
+        "调度算法.C": "cpp"
     },
     "code-runner.executorMap": {
         "javascript": "node",
