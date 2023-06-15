@@ -117,7 +117,8 @@
         "*.ipp": "c",
         "ptrace.h": "c",
         "调度算法.C": "cpp",
-        "最佳适应（Best Fit，BF）算法.C": "cpp"
+        "最佳适应（Best Fit，BF）算法.C": "cpp",
+        "format": "c"
     },
     "code-runner.executorMap": {
         "javascript": "node",
