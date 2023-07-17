@@ -1,33 +1,11 @@
-#include "iostream"
-using namespace std;
 
-int main()
-
-{
-  // Read two integers
-
-    cout << "Enter two integers: ";
-
-  int number1, number2;
-
-  cin >> number1 >> number2;
-
-  try
+#include<bits/stdc++.h>
+  for(int i=0;i<count;i++)
   {
-    if (number2 == 0)
-      throw number1;
+    for(int j=0;j<count;j++){
+      if(ps[i].rank <ps[j].rank){
 
-    cout << number1 << " / " << number2 << " is "
-      << (number1 / number2) << endl;
-
-    cout << "C" << endl;
+      }
+    }
   }
-  catch (int e)
-  {
-    cout << "A" ;
-  }
-
-  cout << "B" << endl;
-
-  return 0;
-}
+  请阅读这个，【命题背景】： 华为通过与大学合作，将鲲鹏芯片、鲲鹏BoostKit加速组件、大数据、HPC、欧拉操作系统、高斯数据库等根技术通过课堂传授给学生，让学生掌握最新技术发展趋势；同时基于产业真实环境和真实问题，在“互联网+”大赛中提供企业命题，支持学生“真题真做”，以提升学生的创新实践能力。 【命题内容】： 操作系统是整个计算机系统的核心基础软件，上承应用，下接硬件，面向用户，对生态要求极高。当前，国产操作系统的开发群体相对数量少，且生态相对薄弱，缺乏拥有主导权的开源社区，无法定义和掌控核心项目的走向，难以保障商业化产品的可持续发展。因此，本赛题围绕openEuler社区，在操作系统的内核、虚拟化、网络、安全、云原生、嵌入式、编程语言、基础设施等技术方向，打造面向领域场景构建创新方案，从而解决行业问题，推动生态发展。 【答题要求】： 1. 题目边界要求：操作系统、编译器、数据库、AI、存储、网络、虚拟化、云原生、安全、嵌入式、编程语言、云计算等 2. 环境要求： openEuler 22.03 LTS（包含SP版本） 版本下载地址：https://www.openeuler.org/zh/download 3. 架构要求： x86_64 、aarch64或其他openEuler支持的架构 4. 代码提交： 包括需求、设计、代码和测试用例等材料提交到如下仓库： https://gitee.com/openeuler/sig-OSCourse 的international-participant目录"，扮演一个华为的技术人员，回答我下述问题
